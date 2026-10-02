@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron'
 import type { IpcInput, IpcOutput, IpcEventPayload } from '../shared/ipc-contract'
 import type { SftpItem, TransferItem } from '../shared/types'
 
@@ -7,6 +7,7 @@ import type { SftpItem, TransferItem } from '../shared/types'
  */
 export interface ElectronApi {
   getVersion: () => Promise<IpcOutput<'app:getVersion'>>
+  getPathForFile: (file: File) => string
 
   // Local PTY
   createTerminal: (input?: IpcInput<'term:create'>) => Promise<IpcOutput<'term:create'>>
@@ -113,6 +114,9 @@ export interface ElectronApi {
 const api: ElectronApi = {
   getVersion: (): Promise<IpcOutput<'app:getVersion'>> => {
     return ipcRenderer.invoke('app:getVersion')
+  },
+  getPathForFile: (file: File): string => {
+    return webUtils.getPathForFile(file)
   },
 
   // Local PTY

@@ -207,7 +207,33 @@ export function SftpPanel({ tabId }: SftpPanelProps): JSX.Element {
 
   return (
     <>
-      <div className="w-full h-full bg-panel border-r border-line flex flex-col flex-none min-w-0 select-none overflow-hidden font-sans">
+      <div
+        onDragOver={(e) => {
+          e.preventDefault()
+        }}
+        onDrop={(e) => {
+          e.preventDefault()
+          if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const paths: string[] = []
+            for (let i = 0; i < e.dataTransfer.files.length; i++) {
+              const file = e.dataTransfer.files[i]
+              let filePath = (file as unknown as { path?: string }).path
+              if (!filePath && typeof window !== 'undefined' && window.api?.getPathForFile) {
+                try {
+                  filePath = window.api.getPathForFile(file)
+                } catch {
+                  // ignore
+                }
+              }
+              if (filePath) paths.push(filePath)
+            }
+            if (paths.length > 0) {
+              handleDropFiles(paths)
+            }
+          }
+        }}
+        className="w-full h-full bg-panel border-r border-line flex flex-col flex-none min-w-0 select-none overflow-hidden font-sans"
+      >
         {/* Breadcrumb Path Bar */}
         <PathBar
           currentPath={currentPath}

@@ -69,6 +69,22 @@ export function App(): JSX.Element {
     }
   }, [tabs])
 
+  // Prevent Chromium from navigating when files are dropped outside drop targets
+  useEffect(() => {
+    const handleGlobalDragOver = (e: DragEvent): void => {
+      e.preventDefault()
+    }
+    const handleGlobalDrop = (e: DragEvent): void => {
+      e.preventDefault()
+    }
+    window.addEventListener('dragover', handleGlobalDragOver)
+    window.addEventListener('drop', handleGlobalDrop)
+    return () => {
+      window.removeEventListener('dragover', handleGlobalDragOver)
+      window.removeEventListener('drop', handleGlobalDrop)
+    }
+  }, [])
+
   const handleRestoreSession = (tabsToRestore: RestorableTab[]): void => {
     clearTabsSnapshot()
     setRestorableTabs([])

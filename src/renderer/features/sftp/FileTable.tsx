@@ -219,9 +219,17 @@ export function FileTable({
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const paths: string[] = []
       for (let i = 0; i < e.dataTransfer.files.length; i++) {
-        const file = e.dataTransfer.files[i] as unknown as { path?: string }
-        if (file.path) {
-          paths.push(file.path)
+        const file = e.dataTransfer.files[i]
+        let filePath = (file as unknown as { path?: string }).path
+        if (!filePath && typeof window !== 'undefined' && window.api?.getPathForFile) {
+          try {
+            filePath = window.api.getPathForFile(file)
+          } catch {
+            // ignore
+          }
+        }
+        if (filePath) {
+          paths.push(filePath)
         }
       }
       if (paths.length > 0 && onDropFiles) {
