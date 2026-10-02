@@ -72,38 +72,14 @@ export function RemoteEditor({ tab, isActive }: RemoteEditorProps): JSX.Element 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null)
 
-  const handleEditorMount: OnMount = (editor, monacoInstance) => {
-    editorRef.current = editor
-    applyMonacoTheme(monacoInstance)
-
-    editor.onDidChangeCursorPosition((e) => {
-      setCursorPos({
-        line: e.position.lineNumber,
-        col: e.position.column
-      })
-    })
-
-    // Custom Ctrl+S command within Monaco
-    editor.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyS, () => {
-      handleSave(false, false)
-    })
-
-    if (isActive) {
-      editor.focus()
-    }
-  }
-
-  // Refocus on tab activation
-  useEffect(() => {
-    if (isActive && editorRef.current) {
-      editorRef.current.focus()
-      editorRef.current.layout()
-    }
-  }, [isActive])
+  const handleSaveRef = useRef<((forceOverwrite?: boolean, saveAsCopy?: boolean) => Promise<void>) | null>(null)
 
   const handleSave = useCallback(
     async (forceOverwrite = false, saveAsCopy = false): Promise<void> => {
       if (!editorState || !window.api?.editorSaveFile) return
+
+      const currentContent = editorRef.current ? editorRef.current.getValue() : editorState.content
+      updateEditorContent(tab.id, currentContent)
 
       setIsSaving(true)
       setSaveError(null)
@@ -112,7 +88,7 @@ export function RemoteEditor({ tab, isActive }: RemoteEditorProps): JSX.Element 
         const res = await window.api.editorSaveFile({
           sessionId: editorState.sessionId,
           remotePath: editorState.remotePath,
-          content: editorState.content,
+          content: currentContent,
           expectedMtime: editorState.mtime,
           expectedSize: editorState.size,
           forceOverwrite,
@@ -129,7 +105,7 @@ export function RemoteEditor({ tab, isActive }: RemoteEditorProps): JSX.Element 
         }
 
         if (res.success && res.newMtime !== undefined && res.newSize !== undefined) {
-          markEditorSaved(tab.id, res.newMtime, res.newSize, res.savedPath)
+          markEditorSaved(tab.id, res.newMtime, res.newSize, res.savedPath, currentContent)
           setConflictData(null)
         }
       } catch (err) {
@@ -138,8 +114,31 @@ export function RemoteEditor({ tab, isActive }: RemoteEditorProps): JSX.Element 
         setIsSaving(false)
       }
     },
-    [editorState, tab.id, markEditorSaved]
+    [editorState, tab.id, markEditorSaved, updateEditorContent]
   )
+
+  handleSaveRef.current = handleSave
+
+  const handleEditorMount: OnMount = (editor, monacoInstance) => {
+    editorRef.current = editor
+    applyMonacoTheme(monacoInstance)
+
+    editor.onDidChangeCursorPosition((e) => {
+      setCursorPos({
+        line: e.position.lineNumber,
+        col: e.position.column
+      })
+    })
+
+    // Custom Ctrl+S command within Monaco
+    editor.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyS, () => {
+      handleSaveRef.current?.(false, false)
+    })
+
+    if (isActive) {
+      editor.focus()
+    }
+  }
 
   if (!editorState) {
     return (

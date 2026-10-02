@@ -84,7 +84,13 @@ export interface TabsState {
   updateEditorContent: (tabId: string, content: string) => void
   updateEditorEncoding: (tabId: string, encoding: string) => void
   updateEditorLineEndings: (tabId: string, lineEndings: 'LF' | 'CRLF') => void
-  markEditorSaved: (tabId: string, newMtime: number, newSize: number, newPath?: string) => void
+  markEditorSaved: (
+    tabId: string,
+    newMtime: number,
+    newSize: number,
+    newPath?: string,
+    savedContent?: string
+  ) => void
 }
 
 const initialTabs: TabData[] = [
@@ -711,11 +717,12 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     }))
   },
 
-  markEditorSaved: (tabId, newMtime, newSize, newPath) => {
+  markEditorSaved: (tabId, newMtime, newSize, newPath, savedContent) => {
     set((s) => ({
       tabs: s.tabs.map((t) => {
         if (t.id !== tabId || !t.editorState) return t
         const fileName = newPath ? newPath.split('/').filter(Boolean).pop() || t.title : t.title
+        const finalContent = savedContent !== undefined ? savedContent : t.editorState.content
         return {
           ...t,
           title: fileName,
@@ -723,7 +730,8 @@ export const useTabsStore = create<TabsState>((set, get) => ({
           editorState: {
             ...t.editorState,
             remotePath: newPath || t.editorState.remotePath,
-            originalContent: t.editorState.content,
+            content: finalContent,
+            originalContent: finalContent,
             isDirty: false,
             mtime: newMtime,
             size: newSize

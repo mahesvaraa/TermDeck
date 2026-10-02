@@ -113,26 +113,31 @@ export class RemoteEditorService {
     const base = remotePath.substring(remotePath.lastIndexOf('/') + 1)
     const tempPath = `${dir === '/' ? '' : dir}/.${base}.termdeck-tmp.${Date.now()}`
 
-    await sftpService.writeFileBuffer(sessionId, tempPath, payload)
-
-    // Preserve original file permissions
-    if (currentStat && currentStat.mode) {
-      try {
-        await sftpService.chmod(sessionId, tempPath, currentStat.mode)
-      } catch {
-        // Ignored if chmod fails
-      }
-    }
-
-    // Rename atomically replacing the original, with direct write fallback
+    let wroteViaTemp = false
     try {
+      await sftpService.writeFileBuffer(sessionId, tempPath, payload)
+      wroteViaTemp = true
+
+      // Preserve original file permissions
+      if (currentStat && currentStat.mode) {
+        try {
+          await sftpService.chmod(sessionId, tempPath, currentStat.mode)
+        } catch {
+          // Ignored if chmod fails
+        }
+      }
+
+      // Rename atomically replacing the original, with direct write fallback
       await sftpService.rename(sessionId, tempPath, remotePath)
     } catch {
+      // Fallback: write directly to the target file
       await sftpService.writeFileBuffer(sessionId, remotePath, payload)
-      try {
-        await sftpService.delete(sessionId, tempPath)
-      } catch {
-        // Ignored
+      if (wroteViaTemp) {
+        try {
+          await sftpService.delete(sessionId, tempPath)
+        } catch {
+          // Ignored
+        }
       }
     }
 
