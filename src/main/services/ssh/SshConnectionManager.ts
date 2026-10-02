@@ -392,6 +392,7 @@ export class SshConnectionManager {
           }
 
           let isFilteringIntegration = false
+          let justFinishedIntegration = false
           let filterBuffer = ''
           const INTEGRATION_MARKER = '\x1b]777;td_done\x07'
 
@@ -408,21 +409,31 @@ export class SshConnectionManager {
           }
 
           stream.on('data', (chunk: Buffer) => {
-            const str = chunk.toString('utf-8')
+            let str = chunk.toString('utf-8')
             if (isFilteringIntegration) {
               filterBuffer += str
               const markerIdx = filterBuffer.indexOf(INTEGRATION_MARKER)
               if (markerIdx !== -1) {
                 isFilteringIntegration = false
+                // Clear the line containing the preliminary prompt
+                channel.buffer.push('\r\x1b[2K')
                 const remaining = filterBuffer.slice(markerIdx + INTEGRATION_MARKER.length)
                 filterBuffer = ''
                 const cleanRemaining = remaining.replace(/^\r?\n/, '')
                 if (cleanRemaining) {
-                  channel.buffer.push('\r\x1b[2K' + cleanRemaining)
-                  flush()
+                  channel.buffer.push(cleanRemaining)
+                  justFinishedIntegration = false
+                } else {
+                  justFinishedIntegration = true
                 }
+                flush()
               }
               return
+            }
+
+            if (justFinishedIntegration) {
+              justFinishedIntegration = false
+              str = str.replace(/^\r?\n/, '')
             }
 
             channel.buffer.push(str)
@@ -461,6 +472,7 @@ export class SshConnectionManager {
               setTimeout(() => {
                 if (isFilteringIntegration) {
                   isFilteringIntegration = false
+                  justFinishedIntegration = false
                   if (filterBuffer.length > 0) {
                     channel.buffer.push(filterBuffer)
                     filterBuffer = ''
@@ -473,7 +485,7 @@ export class SshConnectionManager {
             } catch {
               // Stream may already be closed
             }
-          }, 120)
+          }, 60)
         }
       )
     })

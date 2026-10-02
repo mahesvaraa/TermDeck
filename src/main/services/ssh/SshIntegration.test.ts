@@ -71,6 +71,8 @@ describe('SSH & SFTP mock server integration', () => {
                     if (str.includes('exit')) {
                       stream.exit(0)
                       stream.end()
+                    } else if (str.includes('td_done')) {
+                      stream.write('\x1b]777;td_done\x07\r\nuser@host:~$ ')
                     } else {
                       stream.write(`echo: ${str}`)
                     }
@@ -254,8 +256,12 @@ describe('SSH & SFTP mock server integration', () => {
     expect(sshManager.isConnected(config.id)).toBe(true)
 
     // Wait for shell welcome banner
-    await new Promise((r) => setTimeout(r, 100))
+    await new Promise((r) => setTimeout(r, 120))
     expect(receivedData).toContain('Welcome to Mock SSH')
+    // Ensure the integration command itself is filtered out
+    expect(receivedData).not.toContain('BASH_VERSION')
+    // Ensure line erase sequence was emitted to prevent double prompt
+    expect(receivedData).toContain('\r\x1b[2K')
 
     // Clean up channel
     sshManager.closeChannel(channelId)
