@@ -71,6 +71,21 @@ export function SessionRow({
           <span className="text-[10px] text-mut opacity-0 group-hover:opacity-60 truncate">
             {session.host}
           </span>
+          {session.tags && session.tags.length > 0 && (
+            <div className="flex items-center gap-1 flex-none ml-auto mr-1 opacity-70 group-hover:opacity-100">
+              {session.tags.slice(0, 2).map((t) => (
+                <span
+                  key={t}
+                  className="px-1 py-0.5 rounded bg-panel2 border border-line text-[9px] text-mut font-normal leading-none"
+                >
+                  #{t}
+                </span>
+              ))}
+              {session.tags.length > 2 && (
+                <span className="text-[9px] text-mut leading-none">+{session.tags.length - 2}</span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Hover action buttons */}

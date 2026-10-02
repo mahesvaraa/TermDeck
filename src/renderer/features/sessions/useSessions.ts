@@ -25,15 +25,21 @@ export function useSessions(): UseSessionsResult {
       online: true,
       folderId: s.folderId,
       auth: s.auth,
-      keyPath: s.keyPath
+      keyPath: s.keyPath,
+      tags: s.tags
     }))
   }, [rawSessions])
 
   const folders: SessionTreeFolder[] = useMemo(() => {
     const q = searchQuery.toLowerCase().trim()
-    const filtered = q
+    const cleanQuery = q.startsWith('#') ? q.slice(1).trim() : q
+    const filtered = cleanQuery
       ? allSessions.filter(
-          (s) => s.name.toLowerCase().includes(q) || s.host.toLowerCase().includes(q)
+          (s) =>
+            s.name.toLowerCase().includes(cleanQuery) ||
+            s.host.toLowerCase().includes(cleanQuery) ||
+            (s.username && s.username.toLowerCase().includes(cleanQuery)) ||
+            (s.tags && s.tags.some((t) => t.toLowerCase().includes(cleanQuery)))
         )
       : allSessions
 

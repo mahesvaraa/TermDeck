@@ -20,6 +20,7 @@ export interface SessionItem {
   auth?: SshAuthType
   keyPath?: string
   jumpHostId?: string
+  tags?: string[]
 }
 
 export type TabStatus = 'connecting' | 'connected' | 'disconnected' | 'error'

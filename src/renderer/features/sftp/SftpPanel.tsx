@@ -63,6 +63,7 @@ export function SftpPanel({ tabId }: SftpPanelProps): JSX.Element {
   const [isNewFolderOpen, setIsNewFolderOpen] = useState(false)
   const [renameTarget, setRenameTarget] = useState<string | null>(null)
   const [chmodTarget, setChmodTarget] = useState<string | null>(null)
+  const inFlightUploadsRef = useRef<Set<string>>(new Set())
 
   // Load directory on mount or tab change
   useEffect(() => {
@@ -183,6 +184,12 @@ export function SftpPanel({ tabId }: SftpPanelProps): JSX.Element {
       const slash = localFilePath.includes('\\') ? '\\' : '/'
       const fileName = localFilePath.split(slash).pop() || 'file'
       const remoteDestPath = `${currentPath.replace(/\/+$/, '')}/${fileName}`
+      const uploadKey = `${targetTab.sessionId}:${localFilePath}:${remoteDestPath}`
+
+      if (inFlightUploadsRef.current.has(uploadKey)) continue
+      inFlightUploadsRef.current.add(uploadKey)
+      setTimeout(() => inFlightUploadsRef.current.delete(uploadKey), 1200)
+
       await startUpload(targetTab.sessionId, localFilePath, remoteDestPath)
     }
   }
@@ -227,9 +234,11 @@ export function SftpPanel({ tabId }: SftpPanelProps): JSX.Element {
       <div
         onDragOver={(e) => {
           e.preventDefault()
+          e.stopPropagation()
         }}
         onDrop={(e) => {
           e.preventDefault()
+          e.stopPropagation()
           if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
             const paths: string[] = []
             for (let i = 0; i < e.dataTransfer.files.length; i++) {

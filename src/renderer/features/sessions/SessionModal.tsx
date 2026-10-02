@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react'
-import { X, Server, KeyRound, Lock, Folder } from 'lucide-react'
+import { X, Server, KeyRound, Lock, Folder, Plus } from 'lucide-react'
 import type { SessionConfig } from '@shared/types'
 import { useSessionsStore } from '../../stores/sessions-store'
+import { SessionFolderModal } from './SessionFolderModal'
 
 interface SessionModalProps {
   session?: SessionConfig
@@ -11,6 +12,7 @@ interface SessionModalProps {
 
 export function SessionModal({ session, onClose, onSaved }: SessionModalProps): JSX.Element {
   const folders = useSessionsStore((s) => s.folders)
+  const saveFolder = useSessionsStore((s) => s.saveFolder)
   const saveSession = useSessionsStore((s) => s.saveSession)
   const allSessions = useSessionsStore((s) => s.sessions)
 
@@ -27,6 +29,7 @@ export function SessionModal({ session, onClose, onSaved }: SessionModalProps): 
   const [jumpHostId, setJumpHostId] = useState(session?.jumpHostId || '')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isNewFolderOpen, setIsNewFolderOpen] = useState(false)
 
   const otherSshSessions = allSessions.filter((s) => s.id !== session?.id)
 
@@ -121,7 +124,17 @@ export function SessionModal({ session, onClose, onSaved }: SessionModalProps): 
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-mut mb-1">Папка</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-medium text-mut">Папка</label>
+                <button
+                  type="button"
+                  onClick={() => setIsNewFolderOpen(true)}
+                  className="text-[11px] text-acc hover:underline flex items-center gap-0.5"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Новая папка</span>
+                </button>
+              </div>
               <div className="relative">
                 <select
                   value={folderId}
@@ -330,6 +343,17 @@ export function SessionModal({ session, onClose, onSaved }: SessionModalProps): 
           </div>
         </form>
       </div>
+
+      {isNewFolderOpen && (
+        <SessionFolderModal
+          onSave={async (folderName) => {
+            const newId = `f-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`
+            await saveFolder({ id: newId, name: folderName })
+            setFolderId(newId)
+          }}
+          onClose={() => setIsNewFolderOpen(false)}
+        />
+      )}
     </div>
   )
 }

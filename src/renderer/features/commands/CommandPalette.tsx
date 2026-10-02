@@ -159,10 +159,11 @@ export function CommandPalette({
 
     // Add configured sessions to command palette
     for (const s of sessions) {
+      const tagText = s.tags && s.tags.length > 0 ? ` · ${s.tags.map((t) => `#${t}`).join(' ')}` : ''
       list.push({
         id: `sess-${s.id}`,
         title: s.name,
-        subtitle: `Подключиться к ${s.username}@${s.host}:${s.port || 22}`,
+        subtitle: `Подключиться к ${s.username}@${s.host}:${s.port || 22}${tagText}`,
         category: 'Сессии',
         icon: <Server className="w-4 h-4 text-acc" />,
         action: () => onOpenSession(s)

@@ -205,15 +205,19 @@ export function FileTable({
 
   const handleDragOver = (e: DragEvent): void => {
     e.preventDefault()
+    e.stopPropagation()
     setIsDragOver(true)
   }
 
-  const handleDragLeave = (): void => {
+  const handleDragLeave = (e: DragEvent): void => {
+    e.preventDefault()
+    e.stopPropagation()
     setIsDragOver(false)
   }
 
   const handleDrop = (e: DragEvent): void => {
     e.preventDefault()
+    e.stopPropagation()
     setIsDragOver(false)
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {

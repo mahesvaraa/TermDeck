@@ -1,12 +1,13 @@
 import { useState, type ChangeEvent } from 'react'
-import { Search, KeyRound, Plus, Sliders } from 'lucide-react'
+import { Search, KeyRound, Plus, Sliders, FolderPlus } from 'lucide-react'
 import { ru } from '../../i18n/ru'
 import { useSessions } from './useSessions'
 import { SessionTree } from './SessionTree'
 import { SessionModal } from './SessionModal'
+import { SessionFolderModal } from './SessionFolderModal'
 import { useTabsStore } from '../../stores/tabs-store'
 import { useSessionsStore } from '../../stores/sessions-store'
-import type { SessionItem, SessionConfig } from '@shared/types'
+import type { SessionItem, SessionConfig, SessionTreeFolder, SessionFolder } from '@shared/types'
 
 interface SessionsSidebarProps {
   onKeysClick?: () => void
@@ -19,12 +20,19 @@ export function SessionsSidebar({
 }: SessionsSidebarProps): JSX.Element {
   const { folders, searchQuery, setSearchQuery } = useSessions()
   const rawSessions = useSessionsStore((s) => s.sessions)
+  const rawFolders = useSessionsStore((s) => s.folders)
   const saveSession = useSessionsStore((s) => s.saveSession)
   const deleteSession = useSessionsStore((s) => s.deleteSession)
+  const saveFolder = useSessionsStore((s) => s.saveFolder)
+  const deleteFolder = useSessionsStore((s) => s.deleteFolder)
   const openTab = useTabsStore((s) => s.openTab)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingSession, setEditingSession] = useState<SessionConfig | null>(null)
+  const [targetFolderIdForNewSession, setTargetFolderIdForNewSession] = useState<string | undefined>()
+
+  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false)
+  const [editingFolder, setEditingFolder] = useState<SessionFolder | null>(null)
 
   const handleOpenSession = (session: SessionItem): void => {
     openTab(session)
@@ -83,17 +91,51 @@ export function SessionsSidebar({
     }
   }
 
-  const handleNewSession = (): void => {
+  const handleNewSession = (folderId?: string): void => {
     setEditingSession(null)
+    setTargetFolderIdForNewSession(folderId)
     setIsModalOpen(true)
+  }
+
+  const handleEditFolder = (folder: SessionTreeFolder): void => {
+    const raw = rawFolders.find((f) => f.id === folder.id)
+    setEditingFolder(raw || { id: folder.id, name: folder.name })
+    setIsFolderModalOpen(true)
+  }
+
+  const handleDeleteFolder = async (folderId: string, folderName: string): Promise<void> => {
+    const confirmed = window.confirm(
+      `Удалить папку «${folderName}»?\nСессии в этой папке не будут удалены, а переместятся в «Без папки».`
+    )
+    if (confirmed) {
+      await deleteFolder(folderId)
+    }
+  }
+
+  const handleSaveFolder = async (name: string, folderId?: string): Promise<void> => {
+    const id = folderId || `f-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`
+    await saveFolder({ id, name })
   }
 
   return (
     <>
       <aside className="w-full h-full bg-panel border-r border-line flex flex-col flex-none select-none">
-        <h3 className="m-0 pt-2.5 px-3 pb-1.5 text-xs font-semibold text-mut">
-          {ru.sidebar.sessionsTitle}
-        </h3>
+        <div className="flex items-center justify-between pt-2.5 px-3 pb-1.5">
+          <h3 className="m-0 text-xs font-semibold text-mut">
+            {ru.sidebar.sessionsTitle}
+          </h3>
+          <button
+            type="button"
+            onClick={() => {
+              setEditingFolder(null)
+              setIsFolderModalOpen(true)
+            }}
+            title="Создать новую папку сессий"
+            className="p-1 rounded text-mut hover:text-tx hover:bg-panel2 focus-visible:outline-2 focus-visible:outline-acc transition-colors"
+          >
+            <FolderPlus className="w-3.5 h-3.5" />
+          </button>
+        </div>
 
         <div className="mx-2.5 mt-1 mb-1.5 flex items-center gap-1.5 rounded-md border border-line bg-bg px-2 py-1 text-xs text-mut focus-within:border-acc">
           <Search className="w-3.5 h-3.5 flex-none text-mut opacity-70" />
@@ -113,12 +155,15 @@ export function SessionsSidebar({
           onEditSession={handleEditSession}
           onDuplicateSession={handleDuplicateSession}
           onDeleteSession={handleDeleteSession}
+          onNewSessionInFolder={handleNewSession}
+          onEditFolder={handleEditFolder}
+          onDeleteFolder={handleDeleteFolder}
         />
 
         <div className="flex items-center gap-1.5 p-2 border-t border-line">
           <button
             type="button"
-            onClick={handleNewSession}
+            onClick={() => handleNewSession()}
             title={ru.sidebar.newSession}
             className="flex-1 min-w-0 flex items-center justify-center gap-1 py-1 px-1.5 border border-acc rounded-md bg-acc text-bg font-semibold text-xs hover:opacity-90 whitespace-nowrap focus-visible:outline-2 focus-visible:outline-acc transition-opacity"
           >
@@ -147,10 +192,16 @@ export function SessionsSidebar({
 
       {isModalOpen && (
         <SessionModal
-          session={editingSession || undefined}
+          session={
+            editingSession ||
+            (targetFolderIdForNewSession
+              ? ({ folderId: targetFolderIdForNewSession } as unknown as SessionConfig)
+              : undefined)
+          }
           onClose={() => {
             setIsModalOpen(false)
             setEditingSession(null)
+            setTargetFolderIdForNewSession(undefined)
           }}
           onSaved={(savedSession) => {
             if (!editingSession) {
@@ -167,6 +218,17 @@ export function SessionsSidebar({
                 keyPath: savedSession.keyPath
               })
             }
+          }}
+        />
+      )}
+
+      {isFolderModalOpen && (
+        <SessionFolderModal
+          folder={editingFolder}
+          onSave={handleSaveFolder}
+          onClose={() => {
+            setIsFolderModalOpen(false)
+            setEditingFolder(null)
           }}
         />
       )}
