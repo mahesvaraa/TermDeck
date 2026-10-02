@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent } from 'react'
-import { Search, Key, Plus, Sliders } from 'lucide-react'
+import { Search, KeyRound, Plus, Sliders } from 'lucide-react'
 import { ru } from '../../i18n/ru'
 import { useSessions } from './useSessions'
 import { SessionTree } from './SessionTree'
@@ -115,31 +115,32 @@ export function SessionsSidebar({
           onDeleteSession={handleDeleteSession}
         />
 
-        <div className="flex gap-1.5 p-2 border-t border-line">
+        <div className="flex items-center gap-1.5 p-2 border-t border-line">
           <button
             type="button"
             onClick={handleNewSession}
-            className="flex-1 flex items-center justify-center gap-1 py-1 px-2.5 border border-acc rounded-md bg-acc text-bg font-semibold text-xs hover:opacity-90 focus-visible:outline-2 focus-visible:outline-acc transition-opacity"
+            title={ru.sidebar.newSession}
+            className="flex-1 min-w-0 flex items-center justify-center gap-1 py-1 px-1.5 border border-acc rounded-md bg-acc text-bg font-semibold text-xs hover:opacity-90 whitespace-nowrap focus-visible:outline-2 focus-visible:outline-acc transition-opacity"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>{ru.sidebar.newSession}</span>
+            <Plus className="w-3.5 h-3.5 flex-none" />
+            <span className="truncate">{ru.sidebar.newSession}</span>
           </button>
           <button
             type="button"
             onClick={onKeysClick}
             title="Менеджер SSH-ключей"
-            className="flex items-center gap-1 py-1 px-2 border border-line rounded-md bg-panel2 text-tx text-xs hover:border-acc focus-visible:outline-2 focus-visible:outline-acc transition-colors"
+            className="flex-none flex items-center justify-center gap-1 py-1 px-2 border border-line rounded-md bg-panel2 text-tx text-xs hover:border-acc whitespace-nowrap focus-visible:outline-2 focus-visible:outline-acc transition-colors"
           >
-            <Key className="w-3 h-3 text-mut" />
+            <KeyRound className="w-3 h-3 text-mut flex-none" />
             <span>{ru.sidebar.keys}</span>
           </button>
           <button
             type="button"
             onClick={onSettingsClick}
             title="Настройки TermDeck"
-            className="flex items-center justify-center p-1.5 border border-line rounded-md bg-panel2 text-tx text-xs hover:border-acc focus-visible:outline-2 focus-visible:outline-acc transition-colors"
+            className="flex-none flex items-center justify-center p-1.5 border border-line rounded-md bg-panel2 text-tx text-xs hover:border-acc focus-visible:outline-2 focus-visible:outline-acc transition-colors"
           >
-            <Sliders className="w-3.5 h-3.5 text-mut" />
+            <Sliders className="w-3.5 h-3.5 text-mut flex-none" />
           </button>
         </div>
       </aside>

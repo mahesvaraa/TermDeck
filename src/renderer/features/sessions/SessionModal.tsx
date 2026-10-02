@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { X, Server, Key, Lock, Folder } from 'lucide-react'
+import { X, Server, KeyRound, Lock, Folder } from 'lucide-react'
 import type { SessionConfig } from '@shared/types'
 import { useSessionsStore } from '../../stores/sessions-store'
 
@@ -203,7 +203,7 @@ export function SessionModal({ session, onClose, onSaved }: SessionModalProps): 
                     : 'border-line bg-panel2 text-mut hover:text-tx'
                 }`}
               >
-                <Key className="w-3 h-3" />
+                <KeyRound className="w-3 h-3" />
                 <span>Ключ SSH</span>
               </button>
               <button

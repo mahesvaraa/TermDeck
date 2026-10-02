@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   X,
-  Key,
+  KeyRound,
   Plus,
   Copy,
   Check,
@@ -149,7 +149,7 @@ export function KeyManagerModal({
         {/* Header */}
         <div className="px-4 py-3 border-b border-line flex items-center justify-between bg-panel/70">
           <div className="flex items-center gap-2">
-            <Key className="w-4 h-4 text-acc" />
+            <KeyRound className="w-4 h-4 text-acc" />
             <span className="font-semibold text-sm">Менеджер SSH-ключей</span>
             <span className="text-mut text-[11px] font-mono">
               ({keys.length} {keys.length === 1 ? 'ключ' : 'ключей'})
@@ -243,7 +243,7 @@ export function KeyManagerModal({
                     }`}
                   >
                     <div className="p-1 rounded bg-panel border border-line text-mut flex-none mt-0.5">
-                      <Key className="w-3.5 h-3.5" />
+                      <KeyRound className="w-3.5 h-3.5" />
                     </div>
 
                     <div className="flex-1 min-w-0">

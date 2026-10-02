@@ -17,6 +17,7 @@ export function TransferItem({
   onRetry
 }: TransferItemProps): JSX.Element {
   const isUpload = transfer.direction === 'upload'
+  const fullPath = transfer.remotePath || transfer.localPath || transfer.fileName
 
   const renderStatus = (): JSX.Element => {
     switch (transfer.status) {
@@ -49,15 +50,19 @@ export function TransferItem({
 
   return (
     <div className="text-xs mb-2 last:mb-0">
-      <div className="flex items-center justify-between gap-1 text-tx">
-        <div className="flex items-center gap-1 truncate flex-1 min-w-0">
+      <div className="flex items-center justify-between gap-1 text-tx min-w-0">
+        <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-hidden">
           {isUpload ? (
             <ArrowUp className="w-3 h-3 text-acc flex-none" />
           ) : (
             <ArrowDown className="w-3 h-3 text-ok flex-none" />
           )}
-          <span className="font-medium truncate">{transfer.fileName}</span>
-          {transfer.status !== 'error' && <span className="flex-none">{renderStatus()}</span>}
+          <span className="font-medium truncate min-w-0 flex-1" title={fullPath}>
+            {transfer.fileName}
+          </span>
+          {transfer.status !== 'error' && (
+            <span className="flex-none whitespace-nowrap">{renderStatus()}</span>
+          )}
         </div>
 
         {/* Action Buttons */}
