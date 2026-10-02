@@ -9,10 +9,28 @@ files:
   - "out/**/*"
   - "!out/**/*.map"
   - "package.json"
+  - "!**/deps/**"
+  - "!**/build/**/obj/**"
+  - "!**/*.{tlog,pdb,cc,cpp,c,h,hpp,vcxproj,vcxproj.filters,sln,ninja,ninja_deps,ninja_log,recipe,ipch,iobj,ipdb,exp,lib}"
+  - "!**/test/**"
+  - "!**/tests/**"
+  - "!**/__tests__/**"
+  - "!**/*.d.ts"
+  - "!**/*.map"
+  - "!**/*.md"
 
 asarUnpack:
   - "**/node_modules/@homebridge/node-pty-prebuilt-multiarch/**/*"
   - "**/node_modules/cpu-features/**/*"
+  - "!**/deps/**"
+  - "!**/build/**/obj/**"
+  - "!**/*.{tlog,pdb,cc,cpp,c,h,hpp,vcxproj,vcxproj.filters,sln,ninja,ninja_deps,ninja_log,recipe,ipch,iobj,ipdb,exp,lib}"
+  - "!**/test/**"
+  - "!**/tests/**"
+  - "!**/__tests__/**"
+  - "!**/*.d.ts"
+  - "!**/*.map"
+  - "!**/*.md"
 
 win:
   target:
