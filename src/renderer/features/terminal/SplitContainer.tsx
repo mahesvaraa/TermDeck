@@ -79,7 +79,7 @@ export function SplitContainer({ tab, isActive, onReconnect }: SplitContainerPro
           }
         }}
       >
-        <Panel defaultSize={node.sizes[0]} minSize={15}>
+        <Panel defaultSize={node.sizes[0]} minSize={15} order={1}>
           {renderNode(node.children[0])}
         </Panel>
 
@@ -91,7 +91,7 @@ export function SplitContainer({ tab, isActive, onReconnect }: SplitContainerPro
           }
         />
 
-        <Panel defaultSize={node.sizes[1]} minSize={15}>
+        <Panel defaultSize={node.sizes[1]} minSize={15} order={2}>
           {renderNode(node.children[1])}
         </Panel>
       </PanelGroup>

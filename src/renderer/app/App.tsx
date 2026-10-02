@@ -263,11 +263,11 @@ export function App(): JSX.Element {
   return (
     <div className="flex h-screen w-screen min-w-[900px] flex-col overflow-hidden bg-bg text-tx select-none font-sans">
       <div className="flex flex-1 min-h-0">
-        <PanelGroup direction="horizontal" autoSaveId="termdeck-main-layout">
+        <PanelGroup direction="horizontal" autoSaveId="termdeck-main-layout-v2">
           {/* Sessions Sidebar Panel */}
           {sidebarVisible && (
             <>
-              <Panel defaultSize={18} minSize={12} maxSize={35} id="panel-sidebar">
+              <Panel defaultSize={18} minSize={12} maxSize={35} id="panel-sidebar" order={1}>
                 <SessionsSidebar
                   onKeysClick={() => setIsKeysOpen(true)}
                   onSettingsClick={() => setIsSettingsOpen(true)}
@@ -281,7 +281,7 @@ export function App(): JSX.Element {
           )}
 
           {/* Main Area (Tabs + Action Bar + Work Area) */}
-          <Panel defaultSize={sidebarVisible ? 82 : 100} id="panel-main">
+          <Panel defaultSize={sidebarVisible ? 82 : 100} id="panel-main" order={2}>
             <div className="flex flex-col h-full min-w-0 bg-bg">
               {/* Session Restore Banner */}
               {restorableTabs.length > 0 && (
@@ -305,10 +305,10 @@ export function App(): JSX.Element {
               {/* Work Area (SFTP + Terminal Area) */}
               <div className="flex-1 min-h-0 bg-panel">
                 {panelPosition === 'left' ? (
-                  <PanelGroup direction="horizontal" autoSaveId="termdeck-work-layout-h">
+                  <PanelGroup direction="horizontal" autoSaveId="termdeck-work-layout-h-v2">
                     {shouldShowSftp && (
                       <>
-                        <Panel defaultSize={26} minSize={18} maxSize={45} id="panel-sftp">
+                        <Panel defaultSize={26} minSize={18} maxSize={45} id="panel-sftp" order={1}>
                           <SftpPanel />
                         </Panel>
 
@@ -316,13 +316,13 @@ export function App(): JSX.Element {
                       </>
                     )}
 
-                    <Panel defaultSize={shouldShowSftp ? 74 : 100} id="panel-terminal">
+                    <Panel defaultSize={shouldShowSftp ? 74 : 100} id="panel-terminal" order={2}>
                       <TerminalArea />
                     </Panel>
                   </PanelGroup>
                 ) : (
-                  <PanelGroup direction="vertical" autoSaveId="termdeck-work-layout-v">
-                    <Panel defaultSize={shouldShowSftp ? 65 : 100} minSize={30} id="panel-terminal">
+                  <PanelGroup direction="vertical" autoSaveId="termdeck-work-layout-v-v2">
+                    <Panel defaultSize={shouldShowSftp ? 65 : 100} minSize={30} id="panel-terminal" order={1}>
                       <TerminalArea />
                     </Panel>
 
@@ -330,7 +330,7 @@ export function App(): JSX.Element {
                       <>
                         <PanelResizeHandle className="h-[1px] bg-line hover:bg-acc transition-colors cursor-row-resize flex-none" />
 
-                        <Panel defaultSize={35} minSize={20} maxSize={60} id="panel-sftp">
+                        <Panel defaultSize={35} minSize={20} maxSize={60} id="panel-sftp" order={2}>
                           <SftpPanel />
                         </Panel>
                       </>
