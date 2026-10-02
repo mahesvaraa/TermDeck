@@ -36,7 +36,25 @@ export function ActionBar({
   }
 
   const getPillState = (): { text: string; style: string; title: string; disabled: boolean } => {
-    if (!activeTab || !isSsh) {
+    if (!activeTab) {
+      return {
+        text: 'SFTP: нет активной сессии',
+        style: 'bg-bg text-mut/50 border-line/40 opacity-70 cursor-not-allowed',
+        title: 'Выберите вкладку терминала',
+        disabled: true
+      }
+    }
+    if (activeTab.type === 'editor') {
+      return {
+        text: `Редактор: ${activeTab.title}`,
+        style: 'bg-bg text-acc/80 border-acc/30 cursor-default',
+        title: activeTab.editorState?.remotePath
+          ? `Удалённый файл: ${activeTab.editorState.remotePath}`
+          : `Файл: ${activeTab.title}`,
+        disabled: true
+      }
+    }
+    if (!isSsh) {
       return {
         text: 'SFTP: недоступно для локального терминала',
         style: 'bg-bg text-mut/50 border-line/40 opacity-70 cursor-not-allowed',
@@ -61,14 +79,20 @@ export function ActionBar({
   }
 
   const pillState = getPillState()
+  const isEditor = activeTab?.type === 'editor'
 
   return (
     <div className="flex items-center gap-1.5 py-1.5 px-2.5 bg-panel border-b border-line flex-none overflow-x-auto select-none text-xs">
       <button
         type="button"
         onClick={() => splitActivePane('horizontal')}
+        disabled={isEditor}
         title="Разделить терминал по горизонтали (Split Right)"
-        className="flex items-center gap-1.5 py-1 px-2.5 border border-line rounded-md bg-panel2 text-tx text-xs hover:border-acc focus-visible:outline-2 focus-visible:outline-acc transition-colors"
+        className={`flex items-center gap-1.5 py-1 px-2.5 border rounded-md text-xs transition-colors ${
+          isEditor
+            ? 'opacity-40 cursor-not-allowed border-line bg-panel2 text-mut'
+            : 'border-line bg-panel2 text-tx hover:border-acc focus-visible:outline-2 focus-visible:outline-acc'
+        }`}
       >
         <Columns className="w-3.5 h-3.5 text-mut" />
         <span>Разделить →</span>
@@ -77,8 +101,13 @@ export function ActionBar({
       <button
         type="button"
         onClick={() => splitActivePane('vertical')}
+        disabled={isEditor}
         title="Разделить терминал по вертикали (Split Down)"
-        className="flex items-center gap-1.5 py-1 px-2.5 border border-line rounded-md bg-panel2 text-tx text-xs hover:border-acc focus-visible:outline-2 focus-visible:outline-acc transition-colors"
+        className={`flex items-center gap-1.5 py-1 px-2.5 border rounded-md text-xs transition-colors ${
+          isEditor
+            ? 'opacity-40 cursor-not-allowed border-line bg-panel2 text-mut'
+            : 'border-line bg-panel2 text-tx hover:border-acc focus-visible:outline-2 focus-visible:outline-acc'
+        }`}
       >
         <Rows className="w-3.5 h-3.5 text-mut" />
         <span>Разделить ↓</span>

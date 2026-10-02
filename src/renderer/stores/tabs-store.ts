@@ -605,6 +605,10 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       const hostLabel = sessionTab?.host || 'SSH'
 
       const newTabId = `editor-${sessionId}-${Date.now().toString(36)}`
+      const parentDir = remotePath.includes('/')
+        ? remotePath.substring(0, remotePath.lastIndexOf('/')) || '/'
+        : '/'
+
       const newTab: TabData = {
         id: newTabId,
         title: fileName,
@@ -613,7 +617,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
         status: 'connected',
         uptime: '0м',
         sessionId,
-        currentPath: remotePath,
+        currentPath: parentDir,
         selectedFileName: null,
         osc7Follow: false,
         transfers: [],

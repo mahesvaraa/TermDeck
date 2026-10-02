@@ -18,10 +18,13 @@ interface SftpPanelProps {
 export function SftpPanel({ tabId }: SftpPanelProps): JSX.Element {
   const tabs = useTabsStore((s) => s.tabs)
   const activeTabId = useTabsStore((s) => s.activeTabId)
+  const activeTab = tabs.find((t) => t.id === activeTabId)
 
   const targetTab = tabId
     ? tabs.find((t) => t.id === tabId)
-    : tabs.find((t) => t.id === activeTabId) || tabs[0]
+    : activeTab?.type === 'editor' && activeTab.sessionId
+      ? tabs.find((t) => t.type === 'ssh' && t.sessionId === activeTab.sessionId) || activeTab
+      : activeTab || tabs[0]
 
   const targetTabId = targetTab?.id
   const targetSessionId = targetTab?.sessionId
