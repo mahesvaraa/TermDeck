@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, type KeyboardEvent, type MouseEvent } from 'react'
 import { Terminal, Pencil, Copy, Trash2 } from 'lucide-react'
-import type { SessionItem } from '../../mocks/types'
+import type { SessionItem } from '@shared/types'
 
 interface SessionRowProps {
   session: SessionItem

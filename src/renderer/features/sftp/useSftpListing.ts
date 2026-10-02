@@ -1,11 +1,11 @@
 import { useMemo } from 'react'
-import { mockFileSystem } from '../../mocks/sftp'
-import type { SftpFileItem } from '../../mocks/types'
+import type { SftpFileItem, SftpPanelState } from '@shared/types'
 
-export type SftpPanelState = 'normal' | 'loading' | 'empty' | 'permission_denied' | 'no_connection'
+export type { SftpPanelState }
 
 export interface UseSftpListingOptions {
   stateOverride?: SftpPanelState
+  files?: SftpFileItem[]
 }
 
 export interface UseSftpListingResult {
@@ -17,12 +17,14 @@ export interface UseSftpListingResult {
 }
 
 export function useSftpListing(
-  currentPath: string,
+  _currentPath: string,
   options?: UseSftpListingOptions
 ): UseSftpListingResult {
   const state = options?.stateOverride ?? 'normal'
+  const filesOption = options?.files
 
   const { files, isLoading, error, isEmpty } = useMemo(() => {
+    const providedFiles = filesOption ?? []
     if (state === 'loading') {
       return { files: [], isLoading: true, error: null, isEmpty: false }
     }
@@ -46,14 +48,13 @@ export function useSftpListing(
       }
     }
 
-    const listedFiles = mockFileSystem[currentPath] || []
     return {
-      files: listedFiles,
+      files: providedFiles,
       isLoading: false,
       error: null,
-      isEmpty: listedFiles.length === 0
+      isEmpty: providedFiles.length === 0
     }
-  }, [currentPath, state])
+  }, [filesOption, state])
 
   return {
     files,

@@ -1,4 +1,4 @@
-import type { TransferItem as TransferItemType } from '../../mocks/types'
+import type { TransferItem as TransferItemType } from '@shared/types'
 import { TransferItem } from './TransferItem'
 
 interface TransferListProps {

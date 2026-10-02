@@ -1,5 +1,5 @@
 import { ArrowUp, ArrowDown, RotateCcw, Pause, Play, X } from 'lucide-react'
-import type { TransferItem as TransferItemType } from '../../mocks/types'
+import type { TransferItem as TransferItemType } from '@shared/types'
 
 interface TransferItemProps {
   transfer: TransferItemType

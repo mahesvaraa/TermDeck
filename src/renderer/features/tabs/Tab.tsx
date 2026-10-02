@@ -7,7 +7,7 @@ import {
   type DragEvent
 } from 'react'
 import type { TabData } from '../../stores/tabs-store'
-import type { TabStatus } from '../../mocks/types'
+import type { TabStatus } from '@shared/types'
 import { Copy, Edit3, XCircle, X, FileCode } from 'lucide-react'
 
 interface TabProps {

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useTabsStore } from './tabs-store'
-import type { SessionItem } from '../mocks/types'
+import type { SessionItem } from '@shared/types'
 
 describe('Tabs 20-tab stress and lifecycle cleanup', () => {
   beforeEach(() => {

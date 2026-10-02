@@ -1,6 +1,5 @@
 import { create } from 'zustand'
-import type { SessionItem, TabStatus, TransferItem } from '../mocks/types'
-import type { SplitNode, SplitDirection } from '@shared/types'
+import type { SessionItem, TabStatus, TransferItem, SplitNode, SplitDirection } from '@shared/types'
 import {
   createInitialSplit,
   splitLeaf,

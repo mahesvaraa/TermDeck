@@ -5,6 +5,25 @@ export interface AppVersionInfo {
 
 export type SshAuthType = 'password' | 'key' | 'agent'
 
+export interface SessionItem {
+  id: string
+  name: string
+  host: string
+  username?: string
+  port?: number
+  type: 'ssh' | 'local'
+  online?: boolean
+  defaultPath?: string
+  uptime?: string
+  termText?: string
+  folderId?: string
+  auth?: SshAuthType
+  keyPath?: string
+  jumpHostId?: string
+}
+
+export type TabStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
+
 export interface SessionConfig {
   id: string
   name: string
@@ -26,6 +45,13 @@ export interface SessionFolder {
   id: string
   name: string
   parentId?: string
+  items?: SessionItem[]
+}
+
+export interface SessionTreeFolder {
+  id: string
+  name: string
+  items: SessionItem[]
 }
 
 export interface KnownHostRecord {
@@ -56,6 +82,20 @@ export interface SftpItem {
   owner?: string
   group?: string
 }
+
+export interface SftpFileItem {
+  name: string
+  type: 'directory' | 'file' | 'symlink'
+  size: string
+  rawSize?: number
+  permissions: string
+  date?: string
+  modifyTime?: number
+  owner?: string
+  group?: string
+}
+
+export type SftpPanelState = 'normal' | 'loading' | 'empty' | 'permission_denied' | 'no_connection'
 
 export type TransferStatus =
   'queued' | 'in_progress' | 'paused' | 'completed' | 'error' | 'cancelled'

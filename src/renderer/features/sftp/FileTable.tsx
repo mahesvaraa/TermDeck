@@ -20,8 +20,7 @@ import {
   Terminal as TerminalIcon,
   ExternalLink
 } from 'lucide-react'
-import type { SftpFileItem } from '../../mocks/types'
-import type { SftpPanelState } from './useSftpListing'
+import type { SftpFileItem, SftpPanelState } from '@shared/types'
 import { useSftpStore } from '../../stores/sftp-store'
 
 interface FileTableProps {

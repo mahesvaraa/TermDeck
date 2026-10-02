@@ -1,5 +1,5 @@
 import { useTabsStore } from '../../stores/tabs-store'
-import type { TransferItem } from '../../mocks/types'
+import type { TransferItem } from '@shared/types'
 
 export interface UseTransfersResult {
   transfers: TransferItem[]

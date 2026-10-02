@@ -1,10 +1,10 @@
 import { useState, type KeyboardEvent } from 'react'
 import { ChevronRight, ChevronDown, Server } from 'lucide-react'
-import type { SessionFolder, SessionItem } from '../../mocks/types'
+import type { SessionTreeFolder, SessionItem } from '@shared/types'
 import { SessionRow } from './SessionRow'
 
 interface SessionTreeProps {
-  folders: SessionFolder[]
+  folders: SessionTreeFolder[]
   onOpenSession: (session: SessionItem) => void
   onEditSession?: (session: SessionItem) => void
   onDuplicateSession?: (session: SessionItem) => void

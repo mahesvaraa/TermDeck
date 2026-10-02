@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react'
 import { useSessionsStore } from '../../stores/sessions-store'
-import type { SessionFolder, SessionItem } from '../../mocks/types'
+import type { SessionTreeFolder, SessionItem } from '@shared/types'
 
 export interface UseSessionsResult {
-  folders: SessionFolder[]
+  folders: SessionTreeFolder[]
   allSessions: SessionItem[]
   searchQuery: string
   setSearchQuery: (query: string) => void
@@ -29,7 +29,7 @@ export function useSessions(): UseSessionsResult {
     }))
   }, [rawSessions])
 
-  const folders: SessionFolder[] = useMemo(() => {
+  const folders: SessionTreeFolder[] = useMemo(() => {
     const q = searchQuery.toLowerCase().trim()
     const filtered = q
       ? allSessions.filter(
@@ -37,7 +37,7 @@ export function useSessions(): UseSessionsResult {
         )
       : allSessions
 
-    const result: SessionFolder[] = rawFolders.map((f) => ({
+    const result: SessionTreeFolder[] = rawFolders.map((f) => ({
       id: f.id,
       name: f.name,
       items: filtered.filter((s) => s.folderId === f.id)

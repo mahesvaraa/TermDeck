@@ -1,4 +1,4 @@
-import type { SessionItem } from '../mocks/types'
+import type { SessionItem } from '@shared/types'
 import type { TabData } from '../stores/tabs-store'
 
 export interface RestorableTab {

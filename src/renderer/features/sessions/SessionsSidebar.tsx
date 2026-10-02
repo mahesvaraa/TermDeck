@@ -6,8 +6,7 @@ import { SessionTree } from './SessionTree'
 import { SessionModal } from './SessionModal'
 import { useTabsStore } from '../../stores/tabs-store'
 import { useSessionsStore } from '../../stores/sessions-store'
-import type { SessionItem } from '../../mocks/types'
-import type { SessionConfig } from '@shared/types'
+import type { SessionItem, SessionConfig } from '@shared/types'
 
 interface SessionsSidebarProps {
   onKeysClick?: () => void

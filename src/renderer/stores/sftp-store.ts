@@ -1,7 +1,5 @@
 import { create } from 'zustand'
-import type { SftpFileItem } from '../mocks/types'
-import type { SftpColumnSettings, SftpPanelPosition } from '@shared/types'
-import { mockSftpFiles } from '../mocks/sftp'
+import type { SftpFileItem, SftpColumnSettings, SftpPanelPosition } from '@shared/types'
 
 export function formatFileSize(bytes: number): string {
   if (!bytes || bytes === 0) return '0 B'
@@ -62,7 +60,7 @@ const defaultColumnSettings: SftpColumnSettings = {
 
 export const defaultTabSftpState: TabSftpState = {
   currentPath: '/var/www',
-  items: mockSftpFiles,
+  items: [],
   selectedNames: [],
   isLoading: false,
   error: null
@@ -101,7 +99,7 @@ export const useSftpStore = create<SftpStoreState>((set, get) => ({
     const currentState = get().getTabState(tabId)
     const pathToFetch = targetPath || currentState.currentPath || '.'
 
-    // Local / mockup fallback if no API or sessionId
+    // Local fallback if no API or sessionId
     if (typeof window === 'undefined' || !window.api || !sessionId) {
       set((s) => ({
         tabStates: {
@@ -109,7 +107,7 @@ export const useSftpStore = create<SftpStoreState>((set, get) => ({
           [tabId]: {
             ...currentState,
             currentPath: pathToFetch,
-            items: mockSftpFiles,
+            items: [],
             isLoading: false,
             error: null
           }
