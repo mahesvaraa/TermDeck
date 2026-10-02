@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { HardDrive } from 'lucide-react'
 import { useTabsStore } from '../../stores/tabs-store'
 import { useSftpStore, defaultTabSftpState } from '../../stores/sftp-store'
@@ -70,6 +70,20 @@ export function SftpPanel({ tabId }: SftpPanelProps): JSX.Element {
       loadDirectory(targetTabId, targetSessionId, targetPath || '/var/www')
     }
   }, [targetTabId, targetSessionId, targetType, targetPath, loadDirectory])
+
+  // Automatically refresh directory when a transfer completes for this session
+  const completedCount = transfers.filter((t) => t.status === 'completed').length
+  const prevCompletedCountRef = useRef(completedCount)
+
+  useEffect(() => {
+    const currentDirectory = tabState?.currentPath || targetPath || '/var/www'
+    if (completedCount > prevCompletedCountRef.current) {
+      if (targetTabId && targetSessionId && targetType === 'ssh') {
+        loadDirectory(targetTabId, targetSessionId, currentDirectory)
+      }
+    }
+    prevCompletedCountRef.current = completedCount
+  }, [completedCount, targetTabId, targetSessionId, targetType, tabState?.currentPath, targetPath, loadDirectory])
 
   // Handle local tab notice
   if (targetTab?.type === 'local') {

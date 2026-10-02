@@ -97,4 +97,17 @@ describe('TransferQueue', () => {
     expect(queue.getTransfer(id2)?.status).toBe('cancelled')
     expect(queue.getTransfer(idOther)?.status).not.toBe('cancelled')
   })
+
+  it('handles conflict resolver lifecycle correctly', async () => {
+    const id = await queue.addTransfer({
+      sessionId: 'sess-conflict',
+      direction: 'upload',
+      localPath: '/tmp/test.txt',
+      remotePath: '/remote/test.txt'
+    })
+
+    // Resolving non-existent or unprompted conflict returns false gracefully
+    const resolved = queue.resolveConflict(id, 'skip')
+    expect(resolved).toBe(false)
+  })
 })

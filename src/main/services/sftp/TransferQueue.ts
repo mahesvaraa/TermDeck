@@ -8,7 +8,7 @@ import {
   mkdirSync
 } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
-import { type Readable, type Writable, Transform } from 'node:stream'
+import { type Readable, type Writable, Transform, finished } from 'node:stream'
 import type {
   TransferItem,
   TransferProgressEvent,
@@ -346,7 +346,7 @@ export class TransferQueue {
           const folder = isLocalTarget
             ? dirname(targetPath)
             : targetPath.substring(0, targetPath.lastIndexOf('/'))
-          const altName = newName || `copy_${basename(targetPath)}`
+          const altName = newName || this.generateAltPath(basename(targetPath))
           const finalPath = isLocalTarget ? join(folder, altName) : `${folder}/${altName}`
           resolve({ action: 'rename', finalPath })
         } else {
@@ -397,6 +397,10 @@ export class TransferQueue {
     if (conflict.action === 'skip') {
       item.transferredBytes = fileSize
       item.progress = 100
+      item.status = 'completed'
+      item.speed = '0 B/s'
+      item.eta = 'Пропущено'
+      this.emitProgress(item)
       return
     }
 
@@ -443,17 +447,19 @@ export class TransferQueue {
         }
       })
 
-      readStream
-        .pipe(meter)
-        .pipe(writeStream)
-        .on('finish', () => resolve())
-        .on('error', (err: unknown) => {
-          if (!streams.isAborted) reject(err)
-        })
+      finished(writeStream, (err) => {
+        if (err && !streams.isAborted) {
+          reject(err)
+        } else {
+          resolve()
+        }
+      })
 
       readStream.on('error', (err: unknown) => {
         if (!streams.isAborted) reject(err)
       })
+
+      readStream.pipe(meter).pipe(writeStream)
     })
   }
 
@@ -467,6 +473,10 @@ export class TransferQueue {
     if (conflict.action === 'skip') {
       item.transferredBytes = fileSize
       item.progress = 100
+      item.status = 'completed'
+      item.speed = '0 B/s'
+      item.eta = 'Пропущено'
+      this.emitProgress(item)
       return
     }
 
@@ -522,17 +532,19 @@ export class TransferQueue {
         }
       })
 
-      readStream
-        .pipe(meter)
-        .pipe(writeStream)
-        .on('finish', () => resolve())
-        .on('error', (err: unknown) => {
-          if (!streams.isAborted) reject(err)
-        })
+      finished(writeStream, (err) => {
+        if (err && !streams.isAborted) {
+          reject(err)
+        } else {
+          resolve()
+        }
+      })
 
       readStream.on('error', (err: unknown) => {
         if (!streams.isAborted) reject(err)
       })
+
+      readStream.pipe(meter).pipe(writeStream)
     })
   }
 

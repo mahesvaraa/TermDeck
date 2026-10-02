@@ -26,7 +26,11 @@ export function TransferItem({
       case 'paused':
         return <span className="text-warn text-[11px]">· пауза</span>
       case 'completed':
-        return <span className="text-ok text-[11px]">· готово</span>
+        return (
+          <span className="text-ok text-[11px]">
+            · {transfer.eta === 'Пропущено' ? 'пропущено' : 'готово'}
+          </span>
+        )
       case 'cancelled':
         return <span className="text-mut text-[11px]">· отменено</span>
       case 'error':
