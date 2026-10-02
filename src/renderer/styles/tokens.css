@@ -1,0 +1,32 @@
+:root {
+  --bg: #12141a;
+  --panel: #191c24;
+  --panel2: #1f232d;
+  --line: #2a2f3b;
+  --tx: #d6dae4;
+  --mut: #818899;
+  --acc: #7aa2f7;
+  --ok: #8bd49c;
+  --warn: #e5b567;
+  --err: #f07178;
+  --term: #0d0f14;
+  --termtx: #c9d1e0;
+
+  --sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+
+[data-theme='light'] {
+  --bg: #eceef3;
+  --panel: #f6f7fa;
+  --panel2: #e4e7ee;
+  --line: #d2d6e0;
+  --tx: #242833;
+  --mut: #6b7285;
+  --acc: #3b5bdb;
+  --ok: #8bd49c;
+  --warn: #e5b567;
+  --err: #f07178;
+  --term: #0d0f14;
+  --termtx: #c9d1e0;
+}

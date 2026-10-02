@@ -1,0 +1,62 @@
+appId: com.termdeck.app
+productName: TermDeck
+npmRebuild: false
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - "out/**/*"
+  - "!out/**/*.map"
+  - "package.json"
+
+asarUnpack:
+  - "**/node_modules/@homebridge/node-pty-prebuilt-multiarch/**/*"
+  - "**/node_modules/cpu-features/**/*"
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  icon: build/icon.png
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: TermDeck
+
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+    - target: zip
+      arch:
+        - x64
+        - arm64
+  icon: build/icon.png
+  category: public.app-category.developer-tools
+
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+    - target: deb
+      arch:
+        - x64
+  icon: build/icon.png
+  category: Development
+
+publish:
+  provider: github
+  owner: termdeck
+  repo: termdeck
