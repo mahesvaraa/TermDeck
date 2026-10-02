@@ -1,6 +1,10 @@
+import { lazy, Suspense } from 'react'
 import { useTabsStore } from '../../stores/tabs-store'
 import { SplitContainer } from './SplitContainer'
-import { RemoteEditor } from '../editor/RemoteEditor'
+
+const RemoteEditor = lazy(() =>
+  import('../editor/RemoteEditor').then((m) => ({ default: m.RemoteEditor }))
+)
 
 export function TerminalArea(): JSX.Element {
   const tabs = useTabsStore((s) => s.tabs)
@@ -23,7 +27,15 @@ export function TerminalArea(): JSX.Element {
             }}
           >
             {tab.type === 'editor' ? (
-              <RemoteEditor tab={tab} isActive={isActive} />
+              <Suspense
+                fallback={
+                  <div className="w-full h-full flex items-center justify-center bg-term text-mut text-xs">
+                    Загрузка редактора…
+                  </div>
+                }
+              >
+                <RemoteEditor tab={tab} isActive={isActive} />
+              </Suspense>
             ) : (
               <SplitContainer
                 tab={tab}

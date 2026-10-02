@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Editor, { loader, type OnMount } from '@monaco-editor/react'
-import * as monaco from 'monaco-editor'
+import { monaco } from './monaco-custom'
 import { Save, AlertCircle, CheckCircle2 } from 'lucide-react'
 import type { TabData } from '../../stores/tabs-store'
 import { useTabsStore } from '../../stores/tabs-store'
