@@ -520,9 +520,20 @@ export function FileTable({
       {/* Header Context Menu (Column Visibility) */}
       {headerMenu && (
         <div
-          style={{ top: headerMenu.y, left: headerMenu.x }}
+          style={{
+            top: window.innerHeight - headerMenu.y < 220 ? undefined : headerMenu.y,
+            bottom:
+              window.innerHeight - headerMenu.y < 220
+                ? Math.max(8, window.innerHeight - headerMenu.y)
+                : undefined,
+            left: window.innerWidth - headerMenu.x < 210 ? undefined : headerMenu.x,
+            right:
+              window.innerWidth - headerMenu.x < 210
+                ? Math.max(8, window.innerWidth - headerMenu.x)
+                : undefined
+          }}
           onClick={(e) => e.stopPropagation()}
-          className="fixed z-50 bg-panel2 border border-line rounded-md shadow-xl py-1.5 w-48 text-xs font-sans select-none"
+          className="fixed z-50 bg-panel2 border border-line rounded-md shadow-xl py-1.5 w-48 text-xs font-sans select-none max-h-[calc(100vh-16px)] overflow-y-auto"
         >
           <div className="px-3 py-1 font-semibold text-tx text-xs border-b border-line flex items-center justify-between">
             <span>Колонки таблицы</span>
@@ -574,9 +585,20 @@ export function FileTable({
       {/* Item Context Menu */}
       {contextMenu && (
         <div
-          style={{ top: contextMenu.y, left: contextMenu.x }}
+          style={{
+            top: window.innerHeight - contextMenu.y < 350 ? undefined : contextMenu.y,
+            bottom:
+              window.innerHeight - contextMenu.y < 350
+                ? Math.max(8, window.innerHeight - contextMenu.y)
+                : undefined,
+            left: window.innerWidth - contextMenu.x < 220 ? undefined : contextMenu.x,
+            right:
+              window.innerWidth - contextMenu.x < 220
+                ? Math.max(8, window.innerWidth - contextMenu.x)
+                : undefined
+          }}
           onClick={(e) => e.stopPropagation()}
-          className="fixed z-50 bg-panel border border-line rounded-md shadow-xl py-1 w-48 text-xs font-sans text-tx"
+          className="fixed z-50 bg-panel border border-line rounded-md shadow-xl py-1 w-48 text-xs font-sans text-tx max-h-[calc(100vh-16px)] overflow-y-auto"
         >
           {selectedNames.length > 0 && onDownload && (
             <button

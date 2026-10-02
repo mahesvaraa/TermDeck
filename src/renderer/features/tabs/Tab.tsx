@@ -232,8 +232,19 @@ export function Tab({
       {contextMenuPos && (
         <div
           ref={menuRef}
-          style={{ top: contextMenuPos.y, left: contextMenuPos.x }}
-          className="fixed z-50 min-w-[160px] bg-panel2 border border-line rounded-md shadow-xl py-1 text-xs text-tx font-sans"
+          style={{
+            top: window.innerHeight - contextMenuPos.y < 220 ? undefined : contextMenuPos.y,
+            bottom:
+              window.innerHeight - contextMenuPos.y < 220
+                ? Math.max(8, window.innerHeight - contextMenuPos.y)
+                : undefined,
+            left: window.innerWidth - contextMenuPos.x < 180 ? undefined : contextMenuPos.x,
+            right:
+              window.innerWidth - contextMenuPos.x < 180
+                ? Math.max(8, window.innerWidth - contextMenuPos.x)
+                : undefined
+          }}
+          className="fixed z-50 min-w-[160px] bg-panel2 border border-line rounded-md shadow-xl py-1 text-xs text-tx font-sans max-h-[calc(100vh-16px)] overflow-y-auto"
         >
           <button
             type="button"
