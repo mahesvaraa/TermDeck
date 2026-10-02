@@ -4,11 +4,42 @@ import * as monaco from 'monaco-editor'
 import { Save, AlertCircle, CheckCircle2 } from 'lucide-react'
 import type { TabData } from '../../stores/tabs-store'
 import { useTabsStore } from '../../stores/tabs-store'
+import { useSettingsStore } from '../../stores/settings-store'
 import { getLanguageFromPath } from '../../utils/editor-languages'
 import { EditorConflictModal } from './EditorConflictModal'
 
 // Configure Monaco to use local bundled package (strictly offline / CSP compliant)
 loader.config({ monaco })
+
+function getCssToken(name: string): string {
+  if (typeof window === 'undefined') return ''
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+}
+
+function applyMonacoTheme(monacoInstance: typeof monaco): void {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light'
+  const term = getCssToken('--term')
+  const termtx = getCssToken('--termtx')
+  const panel2 = getCssToken('--panel2')
+  const mut = getCssToken('--mut')
+  const acc = getCssToken('--acc')
+
+  monacoInstance.editor.defineTheme('termdeck-theme', {
+    base: isLight ? 'vs' : 'vs-dark',
+    inherit: true,
+    rules: [],
+    colors: {
+      'editor.background': term,
+      'editor.foreground': termtx,
+      'editor.lineHighlightBackground': panel2,
+      'editorLineNumber.foreground': mut,
+      'editorLineNumber.activeForeground': acc,
+      'editor.selectionBackground': panel2,
+      'editorCursor.foreground': acc
+    }
+  })
+  monacoInstance.editor.setTheme('termdeck-theme')
+}
 
 interface RemoteEditorProps {
   tab: TabData
@@ -17,6 +48,7 @@ interface RemoteEditorProps {
 
 export function RemoteEditor({ tab, isActive }: RemoteEditorProps): JSX.Element {
   const editorState = tab.editorState
+  const theme = useSettingsStore((s) => s.theme)
   const updateEditorContent = useTabsStore((s) => s.updateEditorContent)
   const updateEditorEncoding = useTabsStore((s) => s.updateEditorEncoding)
   const updateEditorLineEndings = useTabsStore((s) => s.updateEditorLineEndings)
@@ -25,6 +57,11 @@ export function RemoteEditor({ tab, isActive }: RemoteEditorProps): JSX.Element 
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 })
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+
+  // Rebuild Monaco theme whenever the application theme changes
+  useEffect(() => {
+    applyMonacoTheme(monaco)
+  }, [theme])
 
   // Conflict modal state
   const [conflictData, setConflictData] = useState<{
@@ -37,23 +74,7 @@ export function RemoteEditor({ tab, isActive }: RemoteEditorProps): JSX.Element 
 
   const handleEditorMount: OnMount = (editor, monacoInstance) => {
     editorRef.current = editor
-
-    // Define custom dark theme matching TermDeck tokens
-    monacoInstance.editor.defineTheme('termdeck-dark', {
-      base: 'vs-dark',
-      inherit: true,
-      rules: [],
-      colors: {
-        'editor.background': '#0f131a',
-        'editor.foreground': '#d1d7e0',
-        'editor.lineHighlightBackground': '#18202d',
-        'editorLineNumber.foreground': '#606c7d',
-        'editorLineNumber.activeForeground': '#4ade80',
-        'editor.selectionBackground': '#264f78',
-        'editorCursor.foreground': '#4ade80'
-      }
-    })
-    monacoInstance.editor.setTheme('termdeck-dark')
+    applyMonacoTheme(monacoInstance)
 
     editor.onDidChangeCursorPosition((e) => {
       setCursorPos({
