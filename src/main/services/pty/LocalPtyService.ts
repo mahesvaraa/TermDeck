@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import fs from 'node:fs'
 import os from 'node:os'
 import * as pty from '@homebridge/node-pty-prebuilt-multiarch'
 
@@ -6,6 +7,8 @@ export interface PtyOptions {
   cols?: number
   rows?: number
   cwd?: string
+  shell?: string
+  args?: string[]
 }
 
 interface PtySession {
@@ -21,15 +24,70 @@ export class LocalPtyService {
   private sessions = new Map<string, PtySession>()
 
   /**
-   * Determine the default shell for the platform.
+   * Determine the default shell for the platform with prototype-style colored prompt
+   * and command/syntax highlighting.
    */
   private getDefaultShell(): { shell: string; args: string[] } {
     if (os.platform() === 'win32') {
       const systemRoot = process.env.SystemRoot || 'C:\\Windows'
-      const powershellPath = `${systemRoot}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`
+      const defaultPs = `${systemRoot}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`
+      let powershellPath = defaultPs
+
+      // Prefer PowerShell Core (pwsh.exe) if installed
+      const pwshLocations = [
+        `${process.env.ProgramFiles || 'C:\\Program Files'}\\PowerShell\\7\\pwsh.exe`,
+        `${process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)'}\\PowerShell\\7\\pwsh.exe`,
+        `${process.env.LOCALAPPDATA || ''}\\Microsoft\\WindowsApps\\pwsh.exe`
+      ]
+      for (const loc of pwshLocations) {
+        if (loc && fs.existsSync(loc)) {
+          powershellPath = loc
+          break
+        }
+      }
+
+      // Prototype-styled prompt and syntax highlighting for PowerShell:
+      // - user@host in green (\x1b[32m, --ok #8bd49c)
+      // - path in blue (\x1b[34m, --acc #7aa2f7) with ~ replacement for HOME
+      // - git branch in yellow (\x1b[33m, --warn #e5b567)
+      // - prompt symbol in yellow (\x1b[33m)
+      // - PSReadLine syntax highlighting (commands in yellow, parameters in cyan, strings in green)
+      const initScript = [
+        '$e = [char]27',
+        'function global:prompt {',
+        '  $u = $env:USERNAME',
+        '  $h = $env:COMPUTERNAME',
+        '  $p = "$pwd"',
+        '  if ($HOME -and $p.StartsWith($HOME, [System.StringComparison]::OrdinalIgnoreCase)) {',
+        '    $p = "~" + $p.Substring($HOME.Length)',
+        '  }',
+        '  $branch = ""',
+        '  try {',
+        '    $b = (git branch --show-current 2>$null)',
+        '    if ($b) { $branch = " $e[33mgit:($b)$e[0m" }',
+        '  } catch {}',
+        '  "$e[32m$u@$h$e[0m $e[34m$p$e[0m$branch $e[33m>$e[0m "',
+        '}',
+        'if (Get-Module -ListAvailable PSReadLine) {',
+        '  Import-Module PSReadLine -ErrorAction SilentlyContinue',
+        '  Set-PSReadLineOption -Colors @{',
+        '    Command = "$e[93m"',
+        '    Parameter = "$e[36m"',
+        '    String = "$e[32m"',
+        '    Variable = "$e[35m"',
+        '    Error = "$e[91m"',
+        '    Number = "$e[95m"',
+        '    Comment = "$e[90m"',
+        '    Operator = "$e[37m"',
+        '  } -ErrorAction SilentlyContinue',
+        '}'
+      ].join('\n')
+
+      const encodedCommand = Buffer.from(initScript, 'utf16le').toString('base64')
+
       return {
         shell: powershellPath,
-        args: ['-NoLogo']
+        args: ['-NoLogo', '-NoExit', '-EncodedCommand', encodedCommand]
       }
     }
 
@@ -49,13 +107,25 @@ export class LocalPtyService {
     onExit: (exitCode: number, signal?: number) => void
   ): string {
     const terminalId = randomUUID()
-    const { shell, args } = this.getDefaultShell()
+    const defaultShell = this.getDefaultShell()
+    const shell = options?.shell || defaultShell.shell
+    const args = options?.args || defaultShell.args
 
     const cols = options?.cols || 80
     const rows = options?.rows || 24
     const cwd = options?.cwd || process.env.HOME || process.env.USERPROFILE || process.cwd()
 
     const isWindows = os.platform() === 'win32'
+    const env: Record<string, string> = {
+      ...(process.env as Record<string, string>),
+      TERM: 'xterm-256color',
+      COLORTERM: 'truecolor',
+      CLICOLOR: '1',
+      CLICOLOR_FORCE: '1',
+      FORCE_COLOR: '1',
+      TERM_PROGRAM: 'TermDeck'
+    }
+
     let ptyProcess: pty.IPty
     try {
       ptyProcess = pty.spawn(shell, args, {
@@ -63,7 +133,7 @@ export class LocalPtyService {
         cols,
         rows,
         cwd,
-        env: process.env as { [key: string]: string },
+        env,
         useConpty: isWindows
       })
     } catch {
@@ -72,7 +142,7 @@ export class LocalPtyService {
         cols,
         rows,
         cwd,
-        env: process.env as { [key: string]: string },
+        env,
         useConpty: false
       })
     }
