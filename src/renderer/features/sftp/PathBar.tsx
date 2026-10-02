@@ -1,5 +1,14 @@
 import { useState, useRef, useEffect, Fragment, type KeyboardEvent } from 'react'
-import { ArrowUp, RefreshCw, FolderPlus, Upload, Home } from 'lucide-react'
+import {
+  ArrowUp,
+  RefreshCw,
+  FolderPlus,
+  Upload,
+  Home,
+  PanelLeft,
+  PanelBottom,
+  PanelLeftClose
+} from 'lucide-react'
 
 interface PathBarProps {
   currentPath: string
@@ -7,6 +16,9 @@ interface PathBarProps {
   onRefresh?: () => void
   onNewFolder?: () => void
   onUpload?: () => void
+  panelPosition?: 'left' | 'bottom'
+  onTogglePosition?: () => void
+  onCollapse?: () => void
 }
 
 export function PathBar({
@@ -14,7 +26,10 @@ export function PathBar({
   onNavigate,
   onRefresh,
   onNewFolder,
-  onUpload
+  onUpload,
+  panelPosition,
+  onTogglePosition,
+  onCollapse
 }: PathBarProps): JSX.Element {
   const [isEditing, setIsEditing] = useState(false)
   const [inputVal, setInputVal] = useState(currentPath)
@@ -131,7 +146,7 @@ export function PathBar({
         )}
       </div>
 
-      {/* Action Buttons: New Folder & Upload */}
+      {/* Action Buttons: New Folder, Upload, Position Toggle & Collapse */}
       <div className="flex items-center gap-0.5 flex-none">
         {onNewFolder && (
           <button
@@ -152,6 +167,32 @@ export function PathBar({
             className="p-1 rounded text-mut hover:text-tx hover:bg-panel2 transition-colors"
           >
             <Upload className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        {onTogglePosition && (
+          <button
+            type="button"
+            onClick={onTogglePosition}
+            title={panelPosition === 'left' ? 'Переместить SFTP вниз' : 'Переместить SFTP влево'}
+            className="p-1 rounded text-mut hover:text-tx hover:bg-panel2 transition-colors ml-0.5"
+          >
+            {panelPosition === 'left' ? (
+              <PanelBottom className="w-3.5 h-3.5 text-acc" />
+            ) : (
+              <PanelLeft className="w-3.5 h-3.5 text-acc" />
+            )}
+          </button>
+        )}
+
+        {onCollapse && (
+          <button
+            type="button"
+            onClick={onCollapse}
+            title="Свернуть панель SFTP (Ctrl+Shift+B)"
+            className="p-1 rounded text-mut hover:text-tx hover:bg-panel2 transition-colors"
+          >
+            <PanelLeftClose className="w-3.5 h-3.5" />
           </button>
         )}
       </div>

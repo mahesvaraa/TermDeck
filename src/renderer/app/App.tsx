@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { SessionsSidebar } from '../features/sessions/SessionsSidebar'
 import { TabBar } from '../features/tabs/TabBar'
-import { ActionBar } from '../features/tabs/ActionBar'
 import { SftpPanel } from '../features/sftp/SftpPanel'
 import { TerminalArea } from '../features/terminal/TerminalArea'
 import { StatusBar } from './StatusBar'
@@ -42,6 +41,9 @@ export function App(): JSX.Element {
   const prevTab = useTabsStore((s) => s.prevTab)
 
   const activeTab = getActiveTab()
+  const isSshTab =
+    activeTab?.type === 'ssh' || (activeTab?.type === 'editor' && Boolean(activeTab.sessionId))
+  const shouldShowSftp = sftpVisible && isSshTab
 
   const [showGallery, setShowGallery] = useState(() => {
     return (
@@ -269,6 +271,8 @@ export function App(): JSX.Element {
                 <SessionsSidebar
                   onKeysClick={() => setIsKeysOpen(true)}
                   onSettingsClick={() => setIsSettingsOpen(true)}
+                  onTunnelsClick={() => setIsTunnelsOpen(true)}
+                  activeTunnelCount={activeTunnelCount}
                 />
               </Panel>
 
@@ -292,13 +296,9 @@ export function App(): JSX.Element {
               )}
 
               {/* Tabs */}
-              <TabBar />
-
-              {/* Action Bar */}
-              <ActionBar
-                onKeysClick={() => setIsKeysOpen(true)}
-                onTunnelsClick={() => setIsTunnelsOpen(true)}
+              <TabBar
                 onSnippetsClick={() => setIsSnippetsOpen(true)}
+                onTunnelsClick={() => setIsTunnelsOpen(true)}
                 activeTunnelCount={activeTunnelCount}
               />
 
@@ -306,7 +306,7 @@ export function App(): JSX.Element {
               <div className="flex-1 min-h-0 bg-panel">
                 {panelPosition === 'left' ? (
                   <PanelGroup direction="horizontal" autoSaveId="termdeck-work-layout-h">
-                    {sftpVisible && (
+                    {shouldShowSftp && (
                       <>
                         <Panel defaultSize={26} minSize={18} maxSize={45} id="panel-sftp">
                           <SftpPanel />
@@ -316,17 +316,17 @@ export function App(): JSX.Element {
                       </>
                     )}
 
-                    <Panel defaultSize={sftpVisible ? 74 : 100} id="panel-terminal">
+                    <Panel defaultSize={shouldShowSftp ? 74 : 100} id="panel-terminal">
                       <TerminalArea />
                     </Panel>
                   </PanelGroup>
                 ) : (
                   <PanelGroup direction="vertical" autoSaveId="termdeck-work-layout-v">
-                    <Panel defaultSize={sftpVisible ? 65 : 100} minSize={30} id="panel-terminal">
+                    <Panel defaultSize={shouldShowSftp ? 65 : 100} minSize={30} id="panel-terminal">
                       <TerminalArea />
                     </Panel>
 
-                    {sftpVisible && (
+                    {shouldShowSftp && (
                       <>
                         <PanelResizeHandle className="h-[1px] bg-line hover:bg-acc transition-colors cursor-row-resize flex-none" />
 

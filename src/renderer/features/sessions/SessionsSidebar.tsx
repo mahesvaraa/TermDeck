@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent } from 'react'
-import { Search, KeyRound, Plus, Sliders, FolderPlus } from 'lucide-react'
+import { Search, KeyRound, Plus, Sliders, FolderPlus, PanelLeftClose, Network } from 'lucide-react'
 import { ru } from '../../i18n/ru'
 import { useSessions } from './useSessions'
 import { SessionTree } from './SessionTree'
@@ -7,16 +7,21 @@ import { SessionModal } from './SessionModal'
 import { SessionFolderModal } from './SessionFolderModal'
 import { useTabsStore } from '../../stores/tabs-store'
 import { useSessionsStore } from '../../stores/sessions-store'
+import { useSettingsStore } from '../../stores/settings-store'
 import type { SessionItem, SessionConfig, SessionTreeFolder, SessionFolder } from '@shared/types'
 
 interface SessionsSidebarProps {
   onKeysClick?: () => void
   onSettingsClick?: () => void
+  onTunnelsClick?: () => void
+  activeTunnelCount?: number
 }
 
 export function SessionsSidebar({
   onKeysClick,
-  onSettingsClick
+  onSettingsClick,
+  onTunnelsClick,
+  activeTunnelCount
 }: SessionsSidebarProps): JSX.Element {
   const { folders, searchQuery, setSearchQuery } = useSessions()
   const rawSessions = useSessionsStore((s) => s.sessions)
@@ -26,6 +31,7 @@ export function SessionsSidebar({
   const saveFolder = useSessionsStore((s) => s.saveFolder)
   const deleteFolder = useSessionsStore((s) => s.deleteFolder)
   const openTab = useTabsStore((s) => s.openTab)
+  const toggleSidebar = useSettingsStore((s) => s.toggleSidebar)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingSession, setEditingSession] = useState<SessionConfig | null>(null)
@@ -124,17 +130,27 @@ export function SessionsSidebar({
           <h3 className="m-0 text-xs font-semibold text-mut">
             {ru.sidebar.sessionsTitle}
           </h3>
-          <button
-            type="button"
-            onClick={() => {
-              setEditingFolder(null)
-              setIsFolderModalOpen(true)
-            }}
-            title="Создать новую папку сессий"
-            className="p-1 rounded text-mut hover:text-tx hover:bg-panel2 focus-visible:outline-2 focus-visible:outline-acc transition-colors"
-          >
-            <FolderPlus className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingFolder(null)
+                setIsFolderModalOpen(true)
+              }}
+              title="Создать новую папку сессий"
+              className="p-1 rounded text-mut hover:text-tx hover:bg-panel2 focus-visible:outline-2 focus-visible:outline-acc transition-colors"
+            >
+              <FolderPlus className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              title="Свернуть панель сессий (Ctrl+B)"
+              className="p-1 rounded text-mut hover:text-tx hover:bg-panel2 focus-visible:outline-2 focus-visible:outline-acc transition-colors"
+            >
+              <PanelLeftClose className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         <div className="mx-2.5 mt-1 mb-1.5 flex items-center gap-1.5 rounded-md border border-line bg-bg px-2 py-1 text-xs text-mut focus-within:border-acc">
@@ -179,6 +195,23 @@ export function SessionsSidebar({
             <KeyRound className="w-3 h-3 text-mut flex-none" />
             <span>{ru.sidebar.keys}</span>
           </button>
+          {onTunnelsClick && (
+            <button
+              type="button"
+              onClick={onTunnelsClick}
+              title="Управление SSH-туннелями (-L, -R, -D)"
+              className={`flex-none flex items-center justify-center gap-1 py-1 px-2 border rounded-md text-xs whitespace-nowrap focus-visible:outline-2 focus-visible:outline-acc transition-colors ${
+                (activeTunnelCount ?? 0) > 0
+                  ? 'border-acc/40 bg-acc/10 text-acc font-medium'
+                  : 'border-line bg-panel2 text-tx hover:border-acc'
+              }`}
+            >
+              <Network
+                className={`w-3 h-3 flex-none ${(activeTunnelCount ?? 0) > 0 ? 'text-acc' : 'text-mut'}`}
+              />
+              <span>Туннели{(activeTunnelCount ?? 0) > 0 ? ` (${activeTunnelCount})` : ''}</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={onSettingsClick}

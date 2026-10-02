@@ -58,60 +58,69 @@ export function SessionRow({
         onDoubleClick={() => onOpen?.(session)}
         onContextMenu={handleContextMenu}
         onKeyDown={handleKeyDown}
-        className={`group flex items-center justify-between py-1 px-2 rounded-[5px] cursor-pointer whitespace-nowrap text-tx hover:bg-panel2 focus-visible:outline-2 focus-visible:outline-acc focus-visible:outline-offset-1 select-none text-xs transition-colors ${
-          isSub ? 'pl-[26px]' : ''
+        className={`group flex flex-col py-1.5 px-2 rounded-[6px] cursor-pointer text-tx hover:bg-panel2 focus-visible:outline-2 focus-visible:outline-acc focus-visible:outline-offset-1 select-none text-xs transition-colors mb-0.5 ${
+          isSub ? 'pl-[22px]' : ''
         }`}
       >
-        <div className="flex items-center gap-[7px] truncate flex-1 min-w-0">
-          <span
-            className={`w-2 h-2 rounded-full flex-none ${session.online ? 'bg-ok' : 'bg-mut'}`}
-            aria-hidden="true"
-          />
-          <span className="truncate">{session.name}</span>
-          <span className="text-[10px] text-mut opacity-0 group-hover:opacity-60 truncate">
-            {session.host}
+        {/* Line 1: Status dot + Session Name + Action buttons */}
+        <div className="flex items-center justify-between gap-1 min-w-0 w-full">
+          <div className="flex items-center gap-1.5 truncate flex-1 min-w-0">
+            <span
+              className={`w-2 h-2 rounded-full flex-none ${session.online ? 'bg-ok' : 'bg-mut'}`}
+              aria-hidden="true"
+            />
+            <span className="font-medium truncate text-xs text-tx">{session.name}</span>
+          </div>
+
+          {/* Action buttons (visible on hover) */}
+          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 flex-none transition-opacity ml-1">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onEdit?.(session)
+              }}
+              title="Редактировать сессию"
+              className="p-1 rounded hover:bg-line text-mut hover:text-tx transition-colors"
+            >
+              <Pencil className="w-3 h-3" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete?.(session)
+              }}
+              title="Удалить сессию"
+              className="p-1 rounded hover:bg-err/20 text-mut hover:text-err transition-colors"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+
+        {/* Line 2: Host + Tags */}
+        <div className="flex items-center justify-between gap-2 mt-0.5 pl-3.5 text-[11px] text-mut min-w-0 w-full">
+          <span className="truncate flex-1 min-w-0">
+            {session.username ? `${session.username}@${session.host}` : session.host}
+            {session.port && session.port !== 22 ? `:${session.port}` : ''}
           </span>
+
           {session.tags && session.tags.length > 0 && (
-            <div className="flex items-center gap-1 flex-none ml-auto mr-1 opacity-70 group-hover:opacity-100">
-              {session.tags.slice(0, 2).map((t) => (
+            <div className="flex items-center gap-1 flex-none flex-wrap">
+              {session.tags.slice(0, 3).map((t) => (
                 <span
                   key={t}
-                  className="px-1 py-0.5 rounded bg-panel2 border border-line text-[9px] text-mut font-normal leading-none"
+                  className="px-1 py-0.2 rounded bg-panel border border-line text-[9px] text-mut/80 font-normal leading-tight"
                 >
                   #{t}
                 </span>
               ))}
-              {session.tags.length > 2 && (
-                <span className="text-[9px] text-mut leading-none">+{session.tags.length - 2}</span>
+              {session.tags.length > 3 && (
+                <span className="text-[9px] text-mut/70 leading-tight">+{session.tags.length - 3}</span>
               )}
             </div>
           )}
-        </div>
-
-        {/* Hover action buttons */}
-        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 flex-none transition-opacity">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              onEdit?.(session)
-            }}
-            title="Редактировать сессию"
-            className="p-1 rounded hover:bg-line text-mut hover:text-tx transition-colors"
-          >
-            <Pencil className="w-3 h-3" />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete?.(session)
-            }}
-            title="Удалить сессию"
-            className="p-1 rounded hover:bg-err/20 text-mut hover:text-err transition-colors"
-          >
-            <Trash2 className="w-3 h-3" />
-          </button>
         </div>
       </div>
 

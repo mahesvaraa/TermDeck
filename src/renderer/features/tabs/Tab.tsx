@@ -7,8 +7,20 @@ import {
   type DragEvent
 } from 'react'
 import type { TabData } from '../../stores/tabs-store'
+import { useTabsStore } from '../../stores/tabs-store'
 import type { TabStatus } from '@shared/types'
-import { Copy, Edit3, XCircle, X, FileCode } from 'lucide-react'
+import {
+  Copy,
+  Edit3,
+  XCircle,
+  X,
+  FileCode,
+  Columns,
+  Rows,
+  Layers,
+  Code,
+  Network
+} from 'lucide-react'
 
 interface TabProps {
   tab: TabData
@@ -20,6 +32,8 @@ interface TabProps {
   onDuplicate: (id: string) => void
   onCloseOthers: (id: string) => void
   onReorder: (fromIndex: number, toIndex: number) => void
+  onSnippetsClick?: () => void
+  onTunnelsClick?: () => void
 }
 
 function getStatusDotClass(status: TabStatus): string {
@@ -45,8 +59,12 @@ export function Tab({
   onRename,
   onDuplicate,
   onCloseOthers,
-  onReorder
+  onReorder,
+  onSnippetsClick,
+  onTunnelsClick
 }: TabProps): JSX.Element {
+  const splitActivePane = useTabsStore((s) => s.splitActivePane)
+  const toggleMultiExec = useTabsStore((s) => s.toggleMultiExec)
   const [isRenaming, setIsRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState(tab.title)
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null)
@@ -268,6 +286,79 @@ export function Tab({
             <Copy className="w-3.5 h-3.5 text-mut" />
             <span>Дублировать</span>
           </button>
+          <div className="h-[1px] bg-line my-1" />
+
+          {tab.type !== 'editor' && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setContextMenuPos(null)
+                  onSelect(tab.id)
+                  splitActivePane('horizontal')
+                }}
+                className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-acc/15 hover:text-acc transition-colors text-left"
+              >
+                <Columns className="w-3.5 h-3.5 text-mut" />
+                <span>Разделить по горизонтали →</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setContextMenuPos(null)
+                  onSelect(tab.id)
+                  splitActivePane('vertical')
+                }}
+                className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-acc/15 hover:text-acc transition-colors text-left"
+              >
+                <Rows className="w-3.5 h-3.5 text-mut" />
+                <span>Разделить по вертикали ↓</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setContextMenuPos(null)
+                  toggleMultiExec(tab.id)
+                }}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 hover:bg-acc/15 hover:text-acc transition-colors text-left ${
+                  tab.isMultiExec ? 'text-acc font-medium' : ''
+                }`}
+              >
+                <Layers className={`w-3.5 h-3.5 ${tab.isMultiExec ? 'text-acc' : 'text-mut'}`} />
+                <span>{tab.isMultiExec ? 'Отключить Multi-exec' : 'Включить Multi-exec'}</span>
+              </button>
+              <div className="h-[1px] bg-line my-1" />
+            </>
+          )}
+
+          {onSnippetsClick && (
+            <button
+              type="button"
+              onClick={() => {
+                setContextMenuPos(null)
+                onSnippetsClick()
+              }}
+              className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-acc/15 hover:text-acc transition-colors text-left"
+            >
+              <Code className="w-3.5 h-3.5 text-mut" />
+              <span>Сниппеты команд…</span>
+            </button>
+          )}
+
+          {tab.type === 'ssh' && onTunnelsClick && (
+            <button
+              type="button"
+              onClick={() => {
+                setContextMenuPos(null)
+                onTunnelsClick()
+              }}
+              className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-acc/15 hover:text-acc transition-colors text-left"
+            >
+              <Network className="w-3.5 h-3.5 text-mut" />
+              <span>SSH-туннели…</span>
+            </button>
+          )}
+
           <div className="h-[1px] bg-line my-1" />
           <button
             type="button"

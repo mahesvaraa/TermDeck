@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { HardDrive } from 'lucide-react'
 import { useTabsStore } from '../../stores/tabs-store'
+import { useSettingsStore } from '../../stores/settings-store'
 import { useSftpStore, defaultTabSftpState } from '../../stores/sftp-store'
 import { useTransfersStore } from '../../stores/transfers-store'
 import { PathBar } from './PathBar'
@@ -30,6 +31,7 @@ export function SftpPanel({ tabId }: SftpPanelProps): JSX.Element {
   const targetSessionId = targetTab?.sessionId
   const targetPath = targetTab?.currentPath
   const targetType = targetTab?.type
+  const isSsh = targetType === 'ssh'
 
   // Direct stable selectors without instantiating new arrays/objects inside selector
   const tabStates = useSftpStore((s) => s.tabStates)
@@ -43,6 +45,10 @@ export function SftpPanel({ tabId }: SftpPanelProps): JSX.Element {
   const renameItem = useSftpStore((s) => s.renameItem)
   const deleteSelected = useSftpStore((s) => s.deleteSelected)
   const chmodItem = useSftpStore((s) => s.chmodItem)
+  const panelPosition = useSftpStore((s) => s.panelPosition)
+  const setPanelPosition = useSftpStore((s) => s.setPanelPosition)
+  const toggleSftp = useSettingsStore((s) => s.toggleSftp)
+  const toggleOsc7 = useTabsStore((s) => s.toggleOsc7)
   const openEditorTab = useTabsStore((s) => s.openEditorTab)
 
   const allTransfers = useTransfersStore((s) => s.transfers)
@@ -267,6 +273,9 @@ export function SftpPanel({ tabId }: SftpPanelProps): JSX.Element {
           onRefresh={handleRefresh}
           onNewFolder={() => setIsNewFolderOpen(true)}
           onUpload={handleUpload}
+          panelPosition={panelPosition}
+          onTogglePosition={() => setPanelPosition(panelPosition === 'left' ? 'bottom' : 'left')}
+          onCollapse={toggleSftp}
         />
 
         {/* Virtualized File Table */}
@@ -300,6 +309,38 @@ export function SftpPanel({ tabId }: SftpPanelProps): JSX.Element {
           onCancelTransfer={cancelTransfer}
           onRetryTransfer={retryTransfer}
         />
+
+        {/* Footer: OSC 7 Follow status button */}
+        <div className="flex items-center justify-between px-2.5 py-1.5 border-t border-line bg-panel2/60 text-xs flex-none select-none">
+          <button
+            type="button"
+            onClick={() => targetTab && isSsh && toggleOsc7(targetTab.id)}
+            disabled={!isSsh}
+            title={
+              !isSsh
+                ? 'Следование доступно только для удалённых SSH-сессий'
+                : targetTab?.osc7Follow
+                ? 'Клик для выключения следования за терминалом'
+                : 'Клик для включения следования за терминалом (OSC 7)'
+            }
+            className={`flex items-center gap-1.5 py-0.5 px-2 rounded-full border text-[11px] font-mono transition-colors ${
+              !isSsh
+                ? 'opacity-40 cursor-not-allowed border-line text-mut'
+                : targetTab?.osc7Follow
+                ? 'bg-ok/10 text-ok border-ok/40 hover:bg-ok/20'
+                : 'bg-bg text-mut border-line hover:text-tx hover:border-tx/40'
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${targetTab?.osc7Follow ? 'bg-ok' : 'bg-mut'}`}
+            />
+            <span>{targetTab?.osc7Follow ? 'Следование (OSC 7) включено' : 'Следование за терминалом'}</span>
+          </button>
+
+          <span className="text-[10px] text-mut">
+            {files.length} {files.length === 1 ? 'объект' : files.length >= 2 && files.length <= 4 ? 'объекта' : 'объектов'}
+          </span>
+        </div>
       </div>
 
       {/* Modals */}
