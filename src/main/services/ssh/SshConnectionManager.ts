@@ -391,6 +391,10 @@ export class SshConnectionManager {
             onExit: (code) => callbacks.onExit(channelId, code)
           }
 
+          let isFilteringIntegration = false
+          let filterBuffer = ''
+          const INTEGRATION_MARKER = '\x1b]777;td_done\x07'
+
           const flush = (): void => {
             if (channel.batchTimer) {
               clearTimeout(channel.batchTimer)
@@ -404,8 +408,25 @@ export class SshConnectionManager {
           }
 
           stream.on('data', (chunk: Buffer) => {
-            channel.buffer.push(chunk.toString('utf-8'))
-            const currentLen = channel.buffer.reduce((acc, str) => acc + str.length, 0)
+            const str = chunk.toString('utf-8')
+            if (isFilteringIntegration) {
+              filterBuffer += str
+              const markerIdx = filterBuffer.indexOf(INTEGRATION_MARKER)
+              if (markerIdx !== -1) {
+                isFilteringIntegration = false
+                const remaining = filterBuffer.slice(markerIdx + INTEGRATION_MARKER.length)
+                filterBuffer = ''
+                const cleanRemaining = remaining.replace(/^\r?\n/, '')
+                if (cleanRemaining) {
+                  channel.buffer.push('\r\x1b[2K' + cleanRemaining)
+                  flush()
+                }
+              }
+              return
+            }
+
+            channel.buffer.push(str)
+            const currentLen = channel.buffer.reduce((acc, s) => acc + s.length, 0)
             if (currentLen >= 65536) {
               flush()
             } else if (!channel.batchTimer) {
@@ -433,7 +454,21 @@ export class SshConnectionManager {
                   ? '__td_osc7(){ printf "\\033]7;file://%s%s\\007" "${HOST:-localhost}" "$PWD"; }; precmd_functions+=(__td_osc7); '
                   : ''
 
-              const integrationCmd = ` if [ -n "$BASH_VERSION" ]; then alias ls='ls --color=auto' 2>/dev/null; alias grep='grep --color=auto' 2>/dev/null; alias diff='diff --color=auto' 2>/dev/null; export COLORTERM=truecolor; export CLICOLOR=1; case "$PS1" in *"\\033"*|*"\\e"*) ;; *) export PS1='\\[\\033[01;32m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;34m\\]\\w\\[\\033[00m\\]\\$ '; esac; ${osc7Bash}elif [ -n "$ZSH_VERSION" ]; then alias ls='ls --color=auto' 2>/dev/null; alias grep='grep --color=auto' 2>/dev/null; export COLORTERM=truecolor; export CLICOLOR=1; case "$PROMPT$prompt" in *"%F{"*|*"%f"*|*"\\033"*|*"\\e"*) ;; *) export PROMPT='%F{green}%n@%m%f:%F{blue}%~%f%# '; esac; ${osc7Zsh}fi\r\x1b[2K`
+              const integrationCmd = ` if [ -n "$BASH_VERSION" ]; then alias ls='ls --color=auto' 2>/dev/null; alias grep='grep --color=auto' 2>/dev/null; alias diff='diff --color=auto' 2>/dev/null; export COLORTERM=truecolor; export CLICOLOR=1; case "$PS1" in *"\\033"*|*"\\e"*) ;; *) export PS1='\\[\\033[01;32m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;34m\\]\\w\\[\\033[00m\\]\\$ '; esac; ${osc7Bash}elif [ -n "$ZSH_VERSION" ]; then alias ls='ls --color=auto' 2>/dev/null; alias grep='grep --color=auto' 2>/dev/null; export COLORTERM=truecolor; export CLICOLOR=1; case "$PROMPT$prompt" in *"%F{"*|*"%f"*|*"\\033"*|*"\\e"*) ;; *) export PROMPT='%F{green}%n@%m%f:%F{blue}%~%f%# '; esac; ${osc7Zsh}fi; printf "\\033]777;td_done\\007"\r`
+
+              isFilteringIntegration = true
+              // Fallback safety timeout: stop filtering after 1200ms if marker is not returned
+              setTimeout(() => {
+                if (isFilteringIntegration) {
+                  isFilteringIntegration = false
+                  if (filterBuffer.length > 0) {
+                    channel.buffer.push(filterBuffer)
+                    filterBuffer = ''
+                    flush()
+                  }
+                }
+              }, 1200)
+
               stream.write(integrationCmd)
             } catch {
               // Stream may already be closed
