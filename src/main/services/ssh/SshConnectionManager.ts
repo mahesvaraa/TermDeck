@@ -368,6 +368,14 @@ export class SshConnectionManager {
           cols: options.cols || 80,
           rows: options.rows || 24
         },
+        {
+          env: {
+            TERM: 'xterm-256color',
+            COLORTERM: 'truecolor',
+            CLICOLOR: '1',
+            FORCE_COLOR: '1'
+          }
+        },
         (err, stream) => {
           if (err) {
             reject(err)
@@ -413,17 +421,24 @@ export class SshConnectionManager {
 
           resolve(channel)
 
-          // Silent shell integration for OSC 7 (only if explicitly requested by user)
-          if (options.enableOsc7 === true) {
-            setTimeout(() => {
-              try {
-                const integrationCmd = ` if [ -n "$BASH_VERSION" ]; then PROMPT_COMMAND='printf "\\033]7;file://%s%s\\007" "\${HOSTNAME:-localhost}" "$PWD"'"\${PROMPT_COMMAND:+;$PROMPT_COMMAND}"; elif [ -n "$ZSH_VERSION" ]; then __td_osc7(){ printf "\\033]7;file://%s%s\\007" "\${HOST:-localhost}" "$PWD"; }; precmd_functions+=(__td_osc7); fi\r\x1b[2K`
-                stream.write(integrationCmd)
-              } catch {
-                // Stream may already be closed
-              }
-            }, 120)
-          }
+          // Silent shell integration: colors (ls, grep), truecolor, and prototype-style prompt
+          setTimeout(() => {
+            try {
+              const osc7Bash =
+                options.enableOsc7 !== false
+                  ? 'PROMPT_COMMAND=\'printf "\\033]7;file://%s%s\\007" "${HOSTNAME:-localhost}" "$PWD"\'"${PROMPT_COMMAND:+;$PROMPT_COMMAND}"; '
+                  : ''
+              const osc7Zsh =
+                options.enableOsc7 !== false
+                  ? '__td_osc7(){ printf "\\033]7;file://%s%s\\007" "${HOST:-localhost}" "$PWD"; }; precmd_functions+=(__td_osc7); '
+                  : ''
+
+              const integrationCmd = ` if [ -n "$BASH_VERSION" ]; then alias ls='ls --color=auto' 2>/dev/null; alias grep='grep --color=auto' 2>/dev/null; alias diff='diff --color=auto' 2>/dev/null; export COLORTERM=truecolor; export CLICOLOR=1; case "$PS1" in *"\\033"*|*"\\e"*) ;; *) export PS1='\\[\\033[01;32m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;34m\\]\\w\\[\\033[00m\\]\\$ '; esac; ${osc7Bash}elif [ -n "$ZSH_VERSION" ]; then alias ls='ls --color=auto' 2>/dev/null; alias grep='grep --color=auto' 2>/dev/null; export COLORTERM=truecolor; export CLICOLOR=1; case "$PROMPT$prompt" in *"%F{"*|*"%f"*|*"\\033"*|*"\\e"*) ;; *) export PROMPT='%F{green}%n@%m%f:%F{blue}%~%f%# '; esac; ${osc7Zsh}fi\r\x1b[2K`
+              stream.write(integrationCmd)
+            } catch {
+              // Stream may already be closed
+            }
+          }, 120)
         }
       )
     })

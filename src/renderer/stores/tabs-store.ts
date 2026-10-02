@@ -170,7 +170,8 @@ export const useTabsStore = create<TabsState>((set, get) => ({
           sessionId: tab.sessionId,
           cols: 80,
           rows: 24,
-          temporarySecret
+          temporarySecret,
+          enableOsc7: tab.osc7Follow ?? true
         })
 
         set((state) => ({
