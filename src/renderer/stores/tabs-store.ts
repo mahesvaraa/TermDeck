@@ -638,7 +638,24 @@ export const useTabsStore = create<TabsState>((set, get) => ({
 
       return newTabId
     } catch (err) {
-      alert(`Не удалось открыть файл: ${(err as Error).message}`)
+      const msg = (err as Error).message || ''
+      if (
+        (msg.includes('двоичные') ||
+          msg.includes('слишком велик') ||
+          msg.includes('binary') ||
+          msg.includes('лимит')) &&
+        typeof window !== 'undefined' &&
+        window.api?.editorOpenExternal
+      ) {
+        try {
+          await window.api.editorOpenExternal({ sessionId, remotePath })
+          return undefined
+        } catch (extErr) {
+          alert(`Не удалось открыть файл: ${(extErr as Error).message}`)
+          return undefined
+        }
+      }
+      alert(`Не удалось открыть файл: ${msg}`)
       return undefined
     }
   },
