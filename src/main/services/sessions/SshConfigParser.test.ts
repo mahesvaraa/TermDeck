@@ -8,9 +8,9 @@ import {
 
 describe('SshConfigParser', () => {
   it('expands tilde to homedir', () => {
-    const fakeHome = 'C:\\Users\\tester'
-    expect(expandHomeDir('~/.ssh/id_rsa', fakeHome)).toBe('C:\\Users\\tester\\.ssh\\id_rsa')
-    expect(expandHomeDir('~\\keys\\server.key', fakeHome)).toBe('C:\\Users\\tester\\keys\\server.key')
+    const fakeHome = path.join('custom', 'home', 'tester')
+    expect(expandHomeDir('~/.ssh/id_rsa', fakeHome)).toBe(path.join(fakeHome, '.ssh', 'id_rsa'))
+    expect(expandHomeDir('~\\keys\\server.key', fakeHome)).toBe(path.join(fakeHome, 'keys', 'server.key'))
     expect(expandHomeDir('/absolute/path', fakeHome)).toBe('/absolute/path')
   })
 

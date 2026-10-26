@@ -18,11 +18,10 @@ export interface SshConfigEntry {
  */
 export function expandHomeDir(filepath: string, homedir = os.homedir()): string {
   if (!filepath) return filepath
-  if (filepath.startsWith('~/') || filepath === '~') {
-    return path.join(homedir, filepath.slice(1))
-  }
-  if (filepath.startsWith('~\\')) {
-    return path.join(homedir, filepath.slice(2))
+  if (filepath === '~') return homedir
+  if (filepath.startsWith('~/') || filepath.startsWith('~\\')) {
+    const subPath = filepath.slice(2)
+    return path.join(homedir, ...subPath.split(/[/\\]/))
   }
   return filepath
 }
