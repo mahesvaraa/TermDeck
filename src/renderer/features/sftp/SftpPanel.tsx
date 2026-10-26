@@ -1,15 +1,19 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
-import { HardDrive } from 'lucide-react'
+import { HardDrive, ArrowRight, ArrowLeft } from 'lucide-react'
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useTabsStore } from '../../stores/tabs-store'
 import { useSettingsStore } from '../../stores/settings-store'
 import { useSftpStore, defaultTabSftpState } from '../../stores/sftp-store'
 import { useTransfersStore } from '../../stores/transfers-store'
 import { PathBar } from './PathBar'
 import { FileTable } from './FileTable'
+import { LocalFileTable } from './LocalFileTable'
 import { TransferList } from './TransferList'
 import { NewFolderModal } from './NewFolderModal'
 import { RenameModal } from './RenameModal'
 import { ChmodModal } from './ChmodModal'
+import { FileDiffModal } from '../editor/FileDiffModal'
+import { getLanguageFromPath } from '../../utils/editor-languages'
 import { formatTerminalCdCommand } from '../../utils/osc7'
 
 interface SftpPanelProps {
@@ -65,11 +69,40 @@ export function SftpPanel({ tabId }: SftpPanelProps): JSX.Element {
   const cancelTransfer = useTransfersStore((s) => s.cancelTransfer)
   const retryTransfer = useTransfersStore((s) => s.retryTransfer)
 
-  // Local Modals State
+  // Local Modals & Dual-Pane State
   const [isNewFolderOpen, setIsNewFolderOpen] = useState(false)
   const [renameTarget, setRenameTarget] = useState<string | null>(null)
   const [chmodTarget, setChmodTarget] = useState<string | null>(null)
+  const [isDualPane, setIsDualPane] = useState(false)
+  const [localPath, setLocalPath] = useState('')
+  const [localSelectedNames, setLocalSelectedNames] = useState<string[]>([])
+  const [diffModal, setDiffModal] = useState<{
+    isOpen: boolean
+    leftTitle: string
+    rightTitle: string
+    originalContent: string
+    modifiedContent: string
+    language?: string
+  }>({
+    isOpen: false,
+    leftTitle: '',
+    rightTitle: '',
+    originalContent: '',
+    modifiedContent: ''
+  })
   const inFlightUploadsRef = useRef<Set<string>>(new Set())
+
+  // Initialize local path for dual pane
+  useEffect(() => {
+    if (window.api?.localFsHomeDir) {
+      window.api
+        .localFsHomeDir()
+        .then((res) => {
+          setLocalPath(res.path)
+        })
+        .catch(() => {})
+    }
+  }, [])
 
   // Load directory on mount or tab change
   useEffect(() => {
@@ -235,6 +268,85 @@ export function SftpPanel({ tabId }: SftpPanelProps): JSX.Element {
     }
   }
 
+  const handleCompareDiff = async (names: [string, string]): Promise<void> => {
+    if (!targetTab?.sessionId || !window.api?.sftpReadFile) return
+    const cleanBase = currentPath.replace(/\/+$/, '')
+    const path1 = `${cleanBase}/${names[0]}`
+    const path2 = `${cleanBase}/${names[1]}`
+
+    try {
+      const [res1, res2] = await Promise.all([
+        window.api.sftpReadFile({ sessionId: targetTab.sessionId, remotePath: path1 }),
+        window.api.sftpReadFile({ sessionId: targetTab.sessionId, remotePath: path2 })
+      ])
+      const lang = getLanguageFromPath(names[0]) || getLanguageFromPath(names[1])
+      setDiffModal({
+        isOpen: true,
+        leftTitle: names[0],
+        rightTitle: names[1],
+        originalContent: res1.content,
+        modifiedContent: res2.content,
+        language: lang
+      })
+    } catch (err) {
+      alert(`Ошибка чтения файлов для Diff: ${(err as Error).message}`)
+    }
+  }
+
+  const handleLocalSelect = (name: string, isCtrl: boolean): void => {
+    if (isCtrl) {
+      setLocalSelectedNames((prev) =>
+        prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
+      )
+    } else {
+      setLocalSelectedNames([name])
+    }
+  }
+
+  const handleUploadSelectedLocalFiles = async (): Promise<void> => {
+    if (!targetTab?.sessionId || localSelectedNames.length === 0 || !localPath) return
+    const isWin = localPath.includes('\\')
+    const sep = isWin ? '\\' : '/'
+    const cleanLocalBase = localPath.endsWith(sep) ? localPath : `${localPath}${sep}`
+    const cleanRemoteBase = currentPath.replace(/\/+$/, '')
+
+    for (const name of localSelectedNames) {
+      const src = `${cleanLocalBase}${name}`
+      const dst = `${cleanRemoteBase}/${name}`
+      await startUpload(targetTab.sessionId, src, dst)
+    }
+    setLocalSelectedNames([])
+  }
+
+  const handleDownloadSelectedRemoteFiles = async (): Promise<void> => {
+    if (!targetTab?.sessionId || selectedNames.length === 0 || !localPath) return
+    const isWin = localPath.includes('\\')
+    const sep = isWin ? '\\' : '/'
+    const cleanLocalBase = localPath.endsWith(sep) ? localPath : `${localPath}${sep}`
+    const cleanRemoteBase = currentPath.replace(/\/+$/, '')
+
+    for (const name of selectedNames) {
+      const src = `${cleanRemoteBase}/${name}`
+      const dst = `${cleanLocalBase}${name}`
+      await startDownload(targetTab.sessionId, src, dst)
+    }
+    handleClearSelection()
+  }
+
+  const handleDropRemoteFilesOnLocal = async (names: string[]): Promise<void> => {
+    if (!targetTab?.sessionId || names.length === 0 || !localPath) return
+    const isWin = localPath.includes('\\')
+    const sep = isWin ? '\\' : '/'
+    const cleanLocalBase = localPath.endsWith(sep) ? localPath : `${localPath}${sep}`
+    const cleanRemoteBase = currentPath.replace(/\/+$/, '')
+
+    for (const name of names) {
+      const src = `${cleanRemoteBase}/${name}`
+      const dst = `${cleanLocalBase}${name}`
+      await startDownload(targetTab.sessionId, src, dst)
+    }
+  }
+
   return (
     <>
       <div
@@ -275,31 +387,103 @@ export function SftpPanel({ tabId }: SftpPanelProps): JSX.Element {
           onUpload={handleUpload}
           panelPosition={panelPosition}
           onTogglePosition={() => setPanelPosition(panelPosition === 'left' ? 'bottom' : 'left')}
+          isDualPane={isDualPane}
+          onToggleDualPane={() => setIsDualPane(!isDualPane)}
           onCollapse={toggleSftp}
         />
 
-        {/* Virtualized File Table */}
-        <FileTable
-          currentPath={currentPath}
-          files={files}
-          selectedNames={selectedNames}
-          state={isLoading ? 'loading' : error ? 'permission_denied' : 'normal'}
-          errorMessage={error}
-          onNavigate={handleNavigate}
-          onSelect={handleSelect}
-          onClearSelection={handleClearSelection}
-          onRetry={handleRefresh}
-          onDownload={handleDownload}
-          onUpload={handleUpload}
-          onNewFolder={() => setIsNewFolderOpen(true)}
-          onRename={(oldName) => setRenameTarget(oldName)}
-          onDelete={handleDelete}
-          onChmod={(name) => setChmodTarget(name)}
-          onDropFiles={handleDropFiles}
-          onOpenTerminalHere={handleOpenTerminalHere}
-          onOpenFile={handleOpenFile}
-          onOpenExternal={handleOpenExternal}
-        />
+        {/* Dual-Pane View or Single File Table */}
+        {isDualPane ? (
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            <PanelGroup direction="horizontal" className="flex-1 min-h-0">
+              <Panel defaultSize={50} minSize={20} order={1}>
+                <LocalFileTable
+                  currentLocalPath={localPath}
+                  onPathChange={setLocalPath}
+                  selectedNames={localSelectedNames}
+                  onSelect={handleLocalSelect}
+                  onClearSelection={() => setLocalSelectedNames([])}
+                  onDropRemoteFiles={handleDropRemoteFilesOnLocal}
+                />
+              </Panel>
+
+              <PanelResizeHandle className="w-1 bg-line hover:bg-acc/50 transition-colors" />
+
+              <Panel defaultSize={50} minSize={20} order={2}>
+                <FileTable
+                  currentPath={currentPath}
+                  files={files}
+                  selectedNames={selectedNames}
+                  state={isLoading ? 'loading' : error ? 'permission_denied' : 'normal'}
+                  errorMessage={error}
+                  onNavigate={handleNavigate}
+                  onSelect={handleSelect}
+                  onClearSelection={handleClearSelection}
+                  onRetry={handleRefresh}
+                  onDownload={handleDownload}
+                  onUpload={handleUpload}
+                  onNewFolder={() => setIsNewFolderOpen(true)}
+                  onRename={(oldName) => setRenameTarget(oldName)}
+                  onDelete={handleDelete}
+                  onChmod={(name) => setChmodTarget(name)}
+                  onDropFiles={handleDropFiles}
+                  onOpenTerminalHere={handleOpenTerminalHere}
+                  onOpenFile={handleOpenFile}
+                  onOpenExternal={handleOpenExternal}
+                  onCompareDiff={handleCompareDiff}
+                />
+              </Panel>
+            </PanelGroup>
+
+            {/* Quick Dual-Pane Actions Toolbar */}
+            <div className="flex items-center justify-between px-2.5 py-1 bg-panel2/80 border-t border-line text-xs flex-none">
+              <button
+                type="button"
+                disabled={localSelectedNames.length === 0}
+                onClick={handleUploadSelectedLocalFiles}
+                title="Загрузить выбранные локальные файлы на сервер"
+                className="py-1 px-2.5 rounded bg-acc text-bg font-medium hover:bg-acc/90 disabled:opacity-30 disabled:pointer-events-none flex items-center gap-1.5 text-[11px] transition-colors"
+              >
+                <span>Загрузить на сервер ({localSelectedNames.length})</span>
+                <ArrowRight className="w-3 h-3" />
+              </button>
+
+              <button
+                type="button"
+                disabled={selectedNames.length === 0}
+                onClick={handleDownloadSelectedRemoteFiles}
+                title="Скачать выбранные файлы с сервера на локальный ПК"
+                className="py-1 px-2.5 rounded border border-line bg-panel hover:bg-panel2 text-tx disabled:opacity-30 disabled:pointer-events-none flex items-center gap-1.5 text-[11px] transition-colors"
+              >
+                <ArrowLeft className="w-3 h-3" />
+                <span>Скачать на ПК ({selectedNames.length})</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <FileTable
+            currentPath={currentPath}
+            files={files}
+            selectedNames={selectedNames}
+            state={isLoading ? 'loading' : error ? 'permission_denied' : 'normal'}
+            errorMessage={error}
+            onNavigate={handleNavigate}
+            onSelect={handleSelect}
+            onClearSelection={handleClearSelection}
+            onRetry={handleRefresh}
+            onDownload={handleDownload}
+            onUpload={handleUpload}
+            onNewFolder={() => setIsNewFolderOpen(true)}
+            onRename={(oldName) => setRenameTarget(oldName)}
+            onDelete={handleDelete}
+            onChmod={(name) => setChmodTarget(name)}
+            onDropFiles={handleDropFiles}
+            onOpenTerminalHere={handleOpenTerminalHere}
+            onOpenFile={handleOpenFile}
+            onOpenExternal={handleOpenExternal}
+            onCompareDiff={handleCompareDiff}
+          />
+        )}
 
         {/* Transfer Queue */}
         <TransferList
@@ -376,6 +560,18 @@ export function SftpPanel({ tabId }: SftpPanelProps): JSX.Element {
               chmodItem(targetTab.id, targetTab.sessionId, chmodTarget, mode)
             }
           }}
+        />
+      )}
+
+      {diffModal.isOpen && (
+        <FileDiffModal
+          isOpen={diffModal.isOpen}
+          onClose={() => setDiffModal((prev) => ({ ...prev, isOpen: false }))}
+          leftTitle={diffModal.leftTitle}
+          rightTitle={diffModal.rightTitle}
+          originalContent={diffModal.originalContent}
+          modifiedContent={diffModal.modifiedContent}
+          language={diffModal.language}
         />
       )}
     </>

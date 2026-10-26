@@ -13,6 +13,7 @@ import { TunnelsModal } from '../features/tunnels/TunnelsModal'
 import { KeyManagerModal } from '../features/keys/KeyManagerModal'
 import { CommandPalette } from '../features/commands/CommandPalette'
 import { SnippetsModal } from '../features/snippets/SnippetsModal'
+import { CommandHistoryModal } from '../features/terminal/CommandHistoryModal'
 import { SettingsModal } from '../features/settings/SettingsModal'
 import { SessionRestoreBanner } from '../features/tabs/SessionRestoreBanner'
 import {
@@ -57,8 +58,21 @@ export function App(): JSX.Element {
   const [isSnippetsOpen, setIsSnippetsOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
+  const [isCommandHistoryOpen, setIsCommandHistoryOpen] = useState(false)
   const [restorableTabs, setRestorableTabs] = useState<RestorableTab[]>([])
   const [activeTunnelCount, setActiveTunnelCount] = useState<number>(0)
+
+  const handleInsertCommand = (command: string, executeImmediately = false): void => {
+    const tab = getActiveTab()
+    if (!tab) return
+    const toSend = executeImmediately ? `${command}\n` : command
+
+    if (tab.type === 'ssh' && tab.channelId && window.api?.writeSsh) {
+      window.api.writeSsh(tab.channelId, toSend)
+    } else if (tab.type === 'local' && tab.terminalId && window.api?.writeTerminal) {
+      window.api.writeTerminal(tab.terminalId, toSend)
+    }
+  }
 
   const tabs = useTabsStore((s) => s.tabs)
   const openTab = useTabsStore((s) => s.openTab)
@@ -219,7 +233,18 @@ export function App(): JSX.Element {
     }
   }
 
-  // Keyboard shortcuts: Ctrl+B (sidebar), Ctrl+Shift+B (SFTP), Ctrl+T, Ctrl+W, Ctrl+Tab
+  // Listen for terminal custom event to open history
+  useEffect(() => {
+    const handleOpenHistory = (): void => {
+      setIsCommandHistoryOpen(true)
+    }
+    window.addEventListener('termdeck:open-history', handleOpenHistory)
+    return () => {
+      window.removeEventListener('termdeck:open-history', handleOpenHistory)
+    }
+  }, [])
+
+  // Keyboard shortcuts: Ctrl+B (sidebar), Ctrl+Shift+B (SFTP), Ctrl+T, Ctrl+W, Ctrl+Tab, Ctrl+R
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
       const isCtrlOrMeta = e.ctrlKey || e.metaKey
@@ -239,6 +264,9 @@ export function App(): JSX.Element {
       } else if (isCtrlOrMeta && !e.shiftKey && e.code === 'KeyW') {
         e.preventDefault()
         requestCloseTab(activeTabId)
+      } else if (isCtrlOrMeta && !e.shiftKey && e.code === 'KeyR') {
+        e.preventDefault()
+        setIsCommandHistoryOpen((prev) => !prev)
       } else if (e.ctrlKey && e.key === 'Tab') {
         e.preventDefault()
         if (e.shiftKey) {
@@ -298,6 +326,7 @@ export function App(): JSX.Element {
               {/* Tabs */}
               <TabBar
                 onSnippetsClick={() => setIsSnippetsOpen(true)}
+                onHistoryClick={() => setIsCommandHistoryOpen(true)}
                 onTunnelsClick={() => setIsTunnelsOpen(true)}
                 activeTunnelCount={activeTunnelCount}
               />
@@ -416,6 +445,14 @@ export function App(): JSX.Element {
         onOpenTunnels={() => setIsTunnelsOpen(true)}
         onOpenKeys={() => setIsKeysOpen(true)}
         onOpenSnippets={() => setIsSnippetsOpen(true)}
+      />
+
+      {/* Command History Search Modal (Ctrl+R) */}
+      <CommandHistoryModal
+        isOpen={isCommandHistoryOpen}
+        onClose={() => setIsCommandHistoryOpen(false)}
+        currentHost={activeTab?.host}
+        onInsertCommand={handleInsertCommand}
       />
     </div>
   )

@@ -7,8 +7,10 @@ import {
   Home,
   PanelLeft,
   PanelBottom,
-  PanelLeftClose
+  PanelLeftClose,
+  Columns2
 } from 'lucide-react'
+import { BookmarksDropdown } from './BookmarksDropdown'
 
 interface PathBarProps {
   currentPath: string
@@ -18,6 +20,8 @@ interface PathBarProps {
   onUpload?: () => void
   panelPosition?: 'left' | 'bottom'
   onTogglePosition?: () => void
+  isDualPane?: boolean
+  onToggleDualPane?: () => void
   onCollapse?: () => void
 }
 
@@ -29,6 +33,8 @@ export function PathBar({
   onUpload,
   panelPosition,
   onTogglePosition,
+  isDualPane,
+  onToggleDualPane,
   onCollapse
 }: PathBarProps): JSX.Element {
   const [isEditing, setIsEditing] = useState(false)
@@ -98,6 +104,8 @@ export function PathBar({
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
         )}
+
+        <BookmarksDropdown currentPath={currentPath} onNavigate={onNavigate} />
       </div>
 
       {/* Path Breadcrumbs or Editable Input */}
@@ -167,6 +175,21 @@ export function PathBar({
             className="p-1 rounded text-mut hover:text-tx hover:bg-panel2 transition-colors"
           >
             <Upload className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        {onToggleDualPane && (
+          <button
+            type="button"
+            onClick={onToggleDualPane}
+            title={isDualPane ? 'Обычный режим (одна панель SFTP)' : 'Двухпанельный режим (Локальный ПК ⇄ SFTP)'}
+            className={`p-1 rounded transition-colors ${
+              isDualPane
+                ? 'text-acc bg-acc/15 font-medium'
+                : 'text-mut hover:text-tx hover:bg-panel2'
+            }`}
+          >
+            <Columns2 className="w-3.5 h-3.5" />
           </button>
         )}
 

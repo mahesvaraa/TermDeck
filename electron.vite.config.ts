@@ -36,6 +36,9 @@ export default defineConfig({
         '@shared': resolve('src/shared')
       }
     },
+    build: {
+      sourcemap: false
+    },
     plugins: [react()]
   }
 })

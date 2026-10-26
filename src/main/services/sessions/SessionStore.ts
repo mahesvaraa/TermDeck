@@ -1,7 +1,13 @@
 import Store from 'electron-store'
 import { createHash } from 'node:crypto'
-import type { SessionConfig, SessionFolder, KnownHostRecord } from '@shared/types'
+import type {
+  SessionConfig,
+  SessionFolder,
+  KnownHostRecord,
+  SessionExportBundle
+} from '@shared/types'
 import { secretStorageService } from '../secrets/SecretStorageService'
+import { readAndParseSshConfig } from './SshConfigParser'
 
 interface StoreSchema {
   sessions: SessionConfig[]
@@ -110,6 +116,119 @@ export class SessionStore {
       s.folderId === id ? { ...s, folderId: undefined } : s
     )
     this.store.set('sessions', sessions)
+  }
+
+  // --- Export & Import ---
+
+  public exportData(): SessionExportBundle {
+    return {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      sessions: this.listSessions(),
+      folders: this.listFolders()
+    }
+  }
+
+  public importData(
+    bundle: SessionExportBundle,
+    mode: 'merge' | 'replace' = 'merge'
+  ): { importedSessionsCount: number; importedFoldersCount: number } {
+    if (mode === 'replace') {
+      this.store.set('sessions', bundle.sessions || [])
+      this.store.set('folders', bundle.folders || [])
+      return {
+        importedSessionsCount: (bundle.sessions || []).length,
+        importedFoldersCount: (bundle.folders || []).length
+      }
+    }
+
+    // Merge mode:
+    const existingFolders = this.listFolders()
+    const folderMap = new Map<string, SessionFolder>()
+    for (const f of existingFolders) folderMap.set(f.id, f)
+    let addedFoldersCount = 0
+
+    for (const incomingFolder of bundle.folders || []) {
+      if (!folderMap.has(incomingFolder.id)) {
+        folderMap.set(incomingFolder.id, incomingFolder)
+        addedFoldersCount++
+      }
+    }
+    this.store.set('folders', Array.from(folderMap.values()))
+
+    const existingSessions = this.listSessions()
+    const sessionMap = new Map<string, SessionConfig>()
+    for (const s of existingSessions) sessionMap.set(s.id, s)
+    let addedSessionsCount = 0
+
+    for (const incomingSession of bundle.sessions || []) {
+      let finalId = incomingSession.id
+      // If ID collides but it's a different session name/host, generate a new ID
+      if (sessionMap.has(finalId)) {
+        const existing = sessionMap.get(finalId)!
+        if (existing.name !== incomingSession.name || existing.host !== incomingSession.host) {
+          finalId = `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
+        }
+      }
+      sessionMap.set(finalId, { ...incomingSession, id: finalId })
+      addedSessionsCount++
+    }
+    this.store.set('sessions', Array.from(sessionMap.values()))
+
+    return {
+      importedSessionsCount: addedSessionsCount,
+      importedFoldersCount: addedFoldersCount
+    }
+  }
+
+  public importFromSshConfig(customPath?: string): {
+    importedCount: number
+    path: string
+    sessions: SessionConfig[]
+  } {
+    const { exists, path: configPath, sessions: parsedSessions } = readAndParseSshConfig(customPath)
+    if (!exists || parsedSessions.length === 0) {
+      return { importedCount: 0, path: configPath, sessions: [] }
+    }
+
+    // Check if we already have an SSH Config folder, otherwise create one
+    let folders = this.listFolders()
+    let sshFolder = folders.find((f) => f.name === 'SSH Config')
+    if (!sshFolder) {
+      sshFolder = {
+        id: `folder-ssh-config-${Date.now().toString(36)}`,
+        name: 'SSH Config'
+      }
+      folders = [...folders, sshFolder]
+      this.store.set('folders', folders)
+    }
+
+    // Assign folderId to imported sessions
+    const sessionsWithFolder = parsedSessions.map((s) => ({
+      ...s,
+      folderId: sshFolder.id
+    }))
+
+    const existingSessions = this.listSessions()
+
+    const newSessionsToSave: SessionConfig[] = []
+    for (const s of sessionsWithFolder) {
+      // Don't duplicate if already existing by exact name & host
+      const alreadyExists = existingSessions.some((ex) => ex.name === s.name && ex.host === s.host)
+      if (!alreadyExists) {
+        newSessionsToSave.push(s)
+      }
+    }
+
+    if (newSessionsToSave.length > 0) {
+      this.store.set('sessions', [...existingSessions, ...newSessionsToSave])
+    }
+
+    return {
+      importedCount: newSessionsToSave.length,
+      path: configPath,
+      sessions: newSessionsToSave
+    }
   }
 
   // --- Known Hosts Verification ---

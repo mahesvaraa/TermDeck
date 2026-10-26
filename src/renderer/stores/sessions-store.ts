@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { SessionConfig, SessionFolder } from '@shared/types'
+import type { SessionConfig, SessionFolder, SessionExportBundle } from '@shared/types'
 
 interface SessionsState {
   sessions: SessionConfig[]
@@ -11,6 +11,17 @@ interface SessionsState {
   deleteSession: (id: string) => Promise<void>
   saveFolder: (folder: SessionFolder) => Promise<void>
   deleteFolder: (id: string) => Promise<void>
+  exportSessions: () => Promise<SessionExportBundle | null>
+  importSessions: (
+    bundle: SessionExportBundle,
+    mode?: 'merge' | 'replace'
+  ) => Promise<{ importedSessionsCount: number; importedFoldersCount: number }>
+  detectSshConfig: (
+    customPath?: string
+  ) => Promise<{ exists: boolean; path: string; count: number }>
+  importSshConfig: (
+    customPath?: string
+  ) => Promise<{ importedCount: number; path: string }>
 }
 
 export const useSessionsStore = create<SessionsState>((set, get) => ({
@@ -126,6 +137,44 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
       folders: state.folders.filter((f) => f.id !== id),
       sessions: state.sessions.map((s) => (s.folderId === id ? { ...s, folderId: undefined } : s))
     }))
+  },
+
+  exportSessions: async () => {
+    if (typeof window !== 'undefined' && window.api?.exportSessions) {
+      const res = await window.api.exportSessions()
+      return res.bundle
+    }
+    return {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      sessions: get().sessions,
+      folders: get().folders
+    }
+  },
+
+  importSessions: async (bundle, mode = 'merge') => {
+    if (typeof window !== 'undefined' && window.api?.importSessions) {
+      const res = await window.api.importSessions({ bundle, mode })
+      await get().loadSessions()
+      return res
+    }
+    return { importedSessionsCount: 0, importedFoldersCount: 0 }
+  },
+
+  detectSshConfig: async (customPath) => {
+    if (typeof window !== 'undefined' && window.api?.detectSshConfig) {
+      return await window.api.detectSshConfig({ customPath })
+    }
+    return { exists: false, path: '', count: 0 }
+  },
+
+  importSshConfig: async (customPath) => {
+    if (typeof window !== 'undefined' && window.api?.importSshConfig) {
+      const res = await window.api.importSshConfig({ customPath })
+      await get().loadSessions()
+      return { importedCount: res.importedCount, path: res.path }
+    }
+    return { importedCount: 0, path: '' }
   }
 }))
 

@@ -12,6 +12,8 @@ export const SessionConfigSchema = z.object({
   username: z.string().min(1),
   auth: z.enum(['password', 'key', 'agent']),
   keyPath: z.string().optional(),
+  agentPath: z.string().optional(),
+  forwardAgent: z.boolean().optional(),
   color: z.string().optional(),
   tags: z.array(z.string()).optional(),
   startupCommand: z.string().optional(),
@@ -24,6 +26,13 @@ export const SessionFolderSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   parentId: z.string().optional()
+})
+
+export const SessionExportBundleSchema = z.object({
+  version: z.number().int().positive(),
+  exportedAt: z.string(),
+  sessions: z.array(SessionConfigSchema),
+  folders: z.array(SessionFolderSchema)
 })
 
 export const SftpItemSchema = z.object({
@@ -169,6 +178,61 @@ export const IpcInvokeContracts = {
     }),
     output: z.void().optional()
   },
+  'session:export': {
+    input: z.void().optional(),
+    output: z.object({
+      bundle: SessionExportBundleSchema
+    })
+  },
+  'session:import': {
+    input: z.object({
+      bundle: SessionExportBundleSchema,
+      mode: z.enum(['merge', 'replace']).default('merge')
+    }),
+    output: z.object({
+      importedSessionsCount: z.number().int().min(0),
+      importedFoldersCount: z.number().int().min(0)
+    })
+  },
+  'session:detectSshConfig': {
+    input: z
+      .object({
+        customPath: z.string().optional()
+      })
+      .optional(),
+    output: z.object({
+      exists: z.boolean(),
+      path: z.string(),
+      count: z.number().int().min(0)
+    })
+  },
+  'session:importSshConfig': {
+    input: z
+      .object({
+        customPath: z.string().optional()
+      })
+      .optional(),
+    output: z.object({
+      importedCount: z.number().int().min(0),
+      path: z.string(),
+      sessions: z.array(SessionConfigSchema)
+    })
+  },
+  'ssh:detectAgents': {
+    input: z.void().optional(),
+    output: z.object({
+      agents: z.array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          type: z.enum(['openssh', 'pageant', '1password', 'custom']),
+          socketPath: z.string(),
+          isAvailable: z.boolean(),
+          description: z.string()
+        })
+      )
+    })
+  },
 
   // SSH Connection & Shell Channels
   'ssh:connect': {
@@ -217,6 +281,38 @@ export const IpcInvokeContracts = {
   },
 
   // SFTP Operations
+  'localFs:list': {
+    input: z
+      .object({
+        path: z.string().optional()
+      })
+      .optional(),
+    output: z.object({
+      path: z.string(),
+      items: z.array(SftpItemSchema)
+    })
+  },
+  'localFs:homeDir': {
+    input: z.void().optional(),
+    output: z.object({
+      path: z.string()
+    })
+  },
+  'localFs:drives': {
+    input: z.void().optional(),
+    output: z.object({
+      drives: z.array(z.string())
+    })
+  },
+  'localFs:openPath': {
+    input: z.object({
+      path: z.string()
+    }),
+    output: z.object({
+      success: z.boolean(),
+      error: z.string().optional()
+    })
+  },
   'sftp:list': {
     input: z.object({
       sessionId: z.string(),

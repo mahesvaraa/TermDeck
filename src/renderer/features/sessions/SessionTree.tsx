@@ -5,6 +5,8 @@ import { SessionRow } from './SessionRow'
 
 interface SessionTreeProps {
   folders: SessionTreeFolder[]
+  selectedSessionIds?: string[]
+  onSelectSession?: (session: SessionItem, isCtrl: boolean, isShift: boolean) => void
   onOpenSession: (session: SessionItem) => void
   onEditSession?: (session: SessionItem) => void
   onDuplicateSession?: (session: SessionItem) => void
@@ -16,6 +18,8 @@ interface SessionTreeProps {
 
 export function SessionTree({
   folders,
+  selectedSessionIds = [],
+  onSelectSession,
   onOpenSession,
   onEditSession,
   onDuplicateSession,
@@ -110,6 +114,8 @@ export function SessionTree({
                     key={`${folder.id}-${session.id}`}
                     session={session}
                     isSub={true}
+                    isSelected={selectedSessionIds.includes(session.id)}
+                    onSelect={onSelectSession}
                     onOpen={onOpenSession}
                     onEdit={onEditSession}
                     onDuplicate={onDuplicateSession}

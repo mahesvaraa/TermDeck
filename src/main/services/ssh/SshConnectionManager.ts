@@ -1,9 +1,10 @@
 import { Client, type ClientChannel } from 'ssh2'
 import { randomUUID } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
-import { homedir } from 'node:os'
 import { sessionStore } from '../sessions/SessionStore'
 import { secretStorageService } from '../secrets/SecretStorageService'
+import { sshAgentService } from './SshAgentService'
+import { getFriendlySshErrorMessage, resolveSshKeyPath } from './ssh-error-translator'
 
 export interface SshConnectOptions {
   sessionId: string
@@ -53,38 +54,12 @@ export class SshConnectionManager {
     this.onConnectionClosedCallback = cb
   }
 
-  /**
-   * Translates common SSH errors to user-friendly Russian messages.
-   */
   public getFriendlyErrorMessage(err: Error): string {
-    const msg = err.message || ''
-    if (msg.includes('All configured authentication methods failed')) {
-      return 'Ошибка аутентификации: неверный пароль, passphrase или приватный ключ'
-    }
-    if (msg.includes('Timed out') || msg.includes('ETIMEDOUT')) {
-      return 'Таймаут подключения: удалённый сервер не отвечает'
-    }
-    if (msg.includes('ECONNREFUSED')) {
-      return 'Сервер отклонил подключение (порт закрыт или SSH-сервис не запущен)'
-    }
-    if (msg.includes('EHOSTUNREACH') || msg.includes('ENETUNREACH')) {
-      return 'Хост недоступен: проверьте сетевое подключение'
-    }
-    if (msg.includes('ENOTFOUND')) {
-      return 'Хост не найден (ошибка разрешения доменного имени)'
-    }
-    if (msg.includes('Host key verification failed')) {
-      return 'Проверка подлинности сервера отклонена'
-    }
-    return `Ошибка SSH-соединения: ${msg}`
+    return getFriendlySshErrorMessage(err)
   }
 
   private resolveKeyPath(keyPath?: string): string | undefined {
-    if (!keyPath) return undefined
-    if (keyPath.startsWith('~')) {
-      return keyPath.replace(/^~/, homedir())
-    }
-    return keyPath
+    return resolveSshKeyPath(keyPath)
   }
 
   /**
@@ -292,6 +267,11 @@ export class SshConnectionManager {
         .then((sockStream) => {
           // Connect client
           try {
+            const agentSocket =
+              session.auth === 'agent' || session.forwardAgent
+                ? sshAgentService.resolveAgentSocket(session.agentPath)
+                : undefined
+
             client.connect({
               host: session.host,
               port: session.port,
@@ -299,7 +279,8 @@ export class SshConnectionManager {
               password: session.auth === 'password' ? secret : undefined,
               privateKey,
               passphrase: session.auth === 'key' ? secret : undefined,
-              agent: session.auth === 'agent' ? process.env.SSH_AUTH_SOCK : undefined,
+              agent: agentSocket,
+              agentForward: session.forwardAgent ?? false,
               keepaliveInterval: (session.keepaliveSec || 30) * 1000,
               readyTimeout: 15000,
               hostVerifier,
@@ -362,6 +343,8 @@ export class SshConnectionManager {
     }
   ): Promise<SshShellChannel> {
     return new Promise((resolve, reject) => {
+      const session = sessionStore.getSession(conn.sessionId)
+
       conn.client.shell(
         {
           term: 'xterm-256color',
@@ -374,7 +357,9 @@ export class SshConnectionManager {
             COLORTERM: 'truecolor',
             CLICOLOR: '1',
             FORCE_COLOR: '1'
-          }
+          },
+          // Enable Agent Forwarding if requested in session config
+          ...(session?.forwardAgent ? { agentForward: true } : {})
         },
         (err, stream) => {
           if (err) {

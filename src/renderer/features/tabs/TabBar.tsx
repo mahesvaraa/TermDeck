@@ -9,7 +9,8 @@ import {
   Network,
   FolderOpen,
   PanelLeft,
-  PanelLeftOpen
+  PanelLeftOpen,
+  History
 } from 'lucide-react'
 import { useTabsStore } from '../../stores/tabs-store'
 import { useSettingsStore, type ThemeMode } from '../../stores/settings-store'
@@ -20,12 +21,14 @@ import { ru } from '../../i18n/ru'
 interface TabBarProps {
   onSnippetsClick?: () => void
   onTunnelsClick?: () => void
+  onHistoryClick?: () => void
   activeTunnelCount?: number
 }
 
 export function TabBar({
   onSnippetsClick,
   onTunnelsClick,
+  onHistoryClick,
   activeTunnelCount
 }: TabBarProps): JSX.Element {
   const tabs = useTabsStore((s) => s.tabs)
@@ -177,6 +180,18 @@ export function TabBar({
           >
             <Code className="w-3.5 h-3.5 text-acc" />
             <span className="font-medium text-xs">Сниппеты</span>
+          </button>
+        )}
+
+        {/* Command History button */}
+        {onHistoryClick && (
+          <button
+            type="button"
+            onClick={onHistoryClick}
+            title="История команд и быстрый поиск (Ctrl+R)"
+            className="p-1 rounded text-mut hover:text-tx hover:bg-panel2 transition-colors"
+          >
+            <History className="w-3.5 h-3.5" />
           </button>
         )}
 

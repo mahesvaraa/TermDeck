@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react'
-import { X, Server, KeyRound, Lock, Folder, Plus } from 'lucide-react'
-import type { SessionConfig } from '@shared/types'
+import { useState, useEffect, type FormEvent } from 'react'
+import { X, Server, KeyRound, Lock, Folder, Plus, ArrowRight, ShieldCheck } from 'lucide-react'
+import type { SessionConfig, DetectedSshAgent } from '@shared/types'
 import { useSessionsStore } from '../../stores/sessions-store'
+import { useSettingsStore } from '../../stores/settings-store'
 import { SessionFolderModal } from './SessionFolderModal'
 
 interface SessionModalProps {
@@ -16,22 +17,59 @@ export function SessionModal({ session, onClose, onSaved }: SessionModalProps): 
   const saveSession = useSessionsStore((s) => s.saveSession)
   const allSessions = useSessionsStore((s) => s.sessions)
 
+  const sessionProfile = useSettingsStore((s) => s.sessionProfile)
+  const setSessionProfile = useSettingsStore((s) => s.setSessionProfile)
+
   const [name, setName] = useState(session?.name || '')
   const [host, setHost] = useState(session?.host || '')
-  const [port, setPort] = useState(session?.port || 22)
-  const [username, setUsername] = useState(session?.username || '')
+  const [port, setPort] = useState(session?.port || sessionProfile.port || 22)
+  const [username, setUsername] = useState(session?.username || sessionProfile.username || '')
   const [folderId, setFolderId] = useState(session?.folderId || '')
-  const [auth, setAuth] = useState<'password' | 'key' | 'agent'>(session?.auth || 'password')
+  const [auth, setAuth] = useState<'password' | 'key' | 'agent'>(
+    session?.auth || sessionProfile.auth || 'key'
+  )
   const [secret, setSecret] = useState('')
-  const [keyPath, setKeyPath] = useState(session?.keyPath || '~/.ssh/id_ed25519')
+  const [keyPath, setKeyPath] = useState(
+    session?.keyPath || sessionProfile.keyPath || '~/.ssh/id_ed25519'
+  )
+  const [agentPath, setAgentPath] = useState(session?.agentPath || '')
+  const [forwardAgent, setForwardAgent] = useState(
+    session?.forwardAgent ?? sessionProfile.forwardAgent ?? false
+  )
+  const [detectedAgents, setDetectedAgents] = useState<DetectedSshAgent[]>([])
   const [tags, setTags] = useState(session?.tags?.join(', ') || '')
-  const [keepaliveSec, setKeepaliveSec] = useState(session?.keepaliveSec || 30)
+  const [keepaliveSec, setKeepaliveSec] = useState(
+    session?.keepaliveSec || sessionProfile.keepaliveSec || 30
+  )
   const [jumpHostId, setJumpHostId] = useState(session?.jumpHostId || '')
   const [error, setError] = useState<string | null>(null)
+  const [profileNotice, setProfileNotice] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isNewFolderOpen, setIsNewFolderOpen] = useState(false)
 
+  const handleSaveAsDefaultProfile = (): void => {
+    setSessionProfile({
+      port: Number(port) || 22,
+      username: username.trim(),
+      auth,
+      keyPath: keyPath.trim(),
+      keepaliveSec: Number(keepaliveSec) || 30,
+      forwardAgent
+    })
+    setProfileNotice('Параметры сохранены как профиль по умолчанию для новых сессий!')
+    setTimeout(() => setProfileNotice(null), 3500)
+  }
+
+  useEffect(() => {
+    if (window.api?.detectSshAgents) {
+      window.api.detectSshAgents().then((res) => {
+        setDetectedAgents(res.agents)
+      }).catch(() => {})
+    }
+  }, [])
+
   const otherSshSessions = allSessions.filter((s) => s.id !== session?.id)
+  const selectedJumpHost = allSessions.find((s) => s.id === jumpHostId)
 
   const handleSubmit = async (e: FormEvent): Promise<void> => {
     e.preventDefault()
@@ -60,6 +98,8 @@ export function SessionModal({ session, onClose, onSaved }: SessionModalProps): 
       folderId: folderId || undefined,
       auth,
       keyPath: auth === 'key' ? keyPath.trim() : undefined,
+      agentPath: auth === 'agent' ? (agentPath.trim() || undefined) : undefined,
+      forwardAgent: forwardAgent ? true : undefined,
       tags: tags
         .split(',')
         .map((t) => t.trim())
@@ -279,8 +319,77 @@ export function SessionModal({ session, onClose, onSaved }: SessionModalProps): 
             </div>
           )}
 
+          {auth === 'agent' && (
+            <div className="space-y-3 p-3 rounded bg-panel2 border border-line">
+              <div>
+                <label className="block text-xs font-medium text-mut mb-1">
+                  SSH-агент аутентификации
+                </label>
+                <select
+                  value={agentPath}
+                  onChange={(e) => setAgentPath(e.target.value)}
+                  className="w-full py-1.5 px-2.5 rounded bg-bg border border-line focus:border-acc text-tx text-xs outline-none"
+                >
+                  <option value="">По умолчанию (системный OpenSSH / SSH_AUTH_SOCK)</option>
+                  {detectedAgents.map((ag) => (
+                    <option key={ag.id} value={ag.socketPath}>
+                      {ag.name} ({ag.socketPath})
+                    </option>
+                  ))}
+                  <option value="custom">Указать кастомный сокет / Named Pipe…</option>
+                </select>
+              </div>
+
+              {agentPath === 'custom' && (
+                <div>
+                  <label className="block text-xs font-medium text-mut mb-1">
+                    Путь к сокету агента или Named Pipe
+                  </label>
+                  <input
+                    type="text"
+                    value={agentPath === 'custom' ? '' : agentPath}
+                    onChange={(e) => setAgentPath(e.target.value)}
+                    placeholder={
+                      navigator.platform.includes('Win')
+                        ? '\\\\.\\pipe\\openssh-ssh-agent'
+                        : '/tmp/ssh-agent.sock'
+                    }
+                    className="w-full py-1.5 px-2.5 rounded bg-bg border border-line focus:border-acc text-tx text-xs font-mono outline-none"
+                  />
+                </div>
+              )}
+
+              <p className="text-[11px] text-mut leading-relaxed">
+                TermDeck запросит авторизацию через локальный агент (OpenSSH, Pageant или 1Password). Вводить пароль или экспортировать ключ не требуется.
+              </p>
+            </div>
+          )}
+
+          {/* ForwardAgent Option */}
+          <div className="flex items-start gap-2 pt-1 border-t border-line">
+            <input
+              type="checkbox"
+              id="chk-forward-agent"
+              checked={forwardAgent}
+              onChange={(e) => setForwardAgent(e.target.checked)}
+              className="mt-0.5 rounded border-line text-acc focus:ring-acc"
+            />
+            <div>
+              <label
+                htmlFor="chk-forward-agent"
+                className="text-xs text-tx font-medium cursor-pointer flex items-center gap-1.5"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-acc" />
+                <span>Проброс SSH-агента на сервер (ForwardAgent)</span>
+              </label>
+              <p className="text-[10px] text-mut mt-0.5">
+                Позволяет использовать ваши локальные ключи на удалённом сервере (для git clone, бастионов, CI) без копирования закрытых ключей на сервер.
+              </p>
+            </div>
+          </div>
+
           {/* Jump Host (ProxyJump / Bastion) */}
-          <div>
+          <div className="space-y-2 pt-1 border-t border-line">
             <label className="block text-xs font-medium text-mut mb-1">
               Jump Host (Бастион / ProxyJump)
             </label>
@@ -296,6 +405,23 @@ export function SessionModal({ session, onClose, onSaved }: SessionModalProps): 
                 </option>
               ))}
             </select>
+
+            {/* Jump Host Chain Visualizer */}
+            {selectedJumpHost && (
+              <div className="p-2.5 rounded bg-panel2 border border-acc/30 flex items-center justify-between text-[11px] text-tx">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold text-mut">Локальный ПК</span>
+                  <ArrowRight className="w-3 h-3 text-acc" />
+                  <span className="px-1.5 py-0.5 rounded bg-acc/15 text-acc font-mono">
+                    {selectedJumpHost.name}
+                  </span>
+                  <ArrowRight className="w-3 h-3 text-acc" />
+                  <span className="px-1.5 py-0.5 rounded bg-ok/15 text-ok font-mono">
+                    {host || 'целевой хост'}:{port || 22}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Tags & Options */}
@@ -324,22 +450,39 @@ export function SessionModal({ session, onClose, onSaved }: SessionModalProps): 
             </div>
           </div>
 
+          {profileNotice && (
+            <div className="p-2 rounded bg-ok/15 border border-ok/30 text-ok text-[11px] flex items-center gap-1.5">
+              <span>{profileNotice}</span>
+            </div>
+          )}
+
           {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-line">
+          <div className="flex items-center justify-between gap-2 pt-2 border-t border-line">
             <button
               type="button"
-              onClick={onClose}
-              className="py-1.5 px-3 rounded border border-line bg-panel2 text-tx text-xs hover:border-mut transition-colors"
+              onClick={handleSaveAsDefaultProfile}
+              title="Сохранить текущие параметры как шаблон по умолчанию для новых сессий"
+              className="py-1 px-2.5 rounded border border-line bg-panel2 hover:bg-bg text-mut hover:text-tx text-[11px] transition-colors"
             >
-              Отмена
+              Сохранить как профиль по умолчанию
             </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="py-1.5 px-4 rounded bg-acc hover:bg-acc/90 text-white text-xs font-medium transition-colors disabled:opacity-50"
-            >
-              {isSubmitting ? 'Сохранение…' : 'Сохранить'}
-            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="py-1.5 px-3 rounded border border-line bg-panel2 text-tx text-xs hover:border-mut transition-colors"
+              >
+                Отмена
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="py-1.5 px-4 rounded bg-acc hover:bg-acc/90 text-white text-xs font-medium transition-colors disabled:opacity-50"
+              >
+                {isSubmitting ? 'Сохранение…' : 'Сохранить'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

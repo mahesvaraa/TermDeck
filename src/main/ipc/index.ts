@@ -1,8 +1,11 @@
-import { app, dialog, BrowserWindow } from 'electron'
+import { app, dialog, BrowserWindow, shell } from 'electron'
 import { registerHandler } from './register-handler'
 import { localPtyService } from '../services/pty/LocalPtyService'
+import { localFsService } from '../services/local-fs/LocalFsService'
 import { sessionStore } from '../services/sessions/SessionStore'
+import { readAndParseSshConfig } from '../services/sessions/SshConfigParser'
 import { sshConnectionManager } from '../services/ssh/SshConnectionManager'
+import { sshAgentService } from '../services/ssh/SshAgentService'
 import { sftpService } from '../services/sftp/SftpService'
 import { transferQueue } from '../services/sftp/TransferQueue'
 import { remoteEditorService } from '../services/editor/RemoteEditorService'
@@ -103,6 +106,39 @@ export function registerAllIpcHandlers(): void {
     sessionStore.deleteFolder(input.id)
   })
 
+  registerHandler('session:export', async () => {
+    return {
+      bundle: sessionStore.exportData()
+    }
+  })
+
+  registerHandler('session:import', async (input) => {
+    const res = sessionStore.importData(input.bundle, input.mode)
+    return {
+      importedSessionsCount: res.importedSessionsCount,
+      importedFoldersCount: res.importedFoldersCount
+    }
+  })
+
+  registerHandler('session:detectSshConfig', async (input) => {
+    const { exists, path: cfgPath, sessions } = readAndParseSshConfig(input?.customPath)
+    return {
+      exists,
+      path: cfgPath,
+      count: sessions.length
+    }
+  })
+
+  registerHandler('session:importSshConfig', async (input) => {
+    return sessionStore.importFromSshConfig(input?.customPath)
+  })
+
+  registerHandler('ssh:detectAgents', async () => {
+    return {
+      agents: sshAgentService.detectAgents()
+    }
+  })
+
   // --- SSH Connection & Shell Handlers ---
 
   registerHandler('ssh:connect', async (input, event) => {
@@ -155,6 +191,25 @@ export function registerAllIpcHandlers(): void {
       trustOnce: input.trustOnce,
       remember: input.remember
     })
+  })
+
+  // --- Local File System Handlers (Dual-Pane) ---
+
+  registerHandler('localFs:list', async (input) => {
+    return await localFsService.listDirectory(input?.path)
+  })
+
+  registerHandler('localFs:homeDir', async () => {
+    return { path: localFsService.getHomeDir() }
+  })
+
+  registerHandler('localFs:drives', async () => {
+    return { drives: localFsService.getDrives() }
+  })
+
+  registerHandler('localFs:openPath', async (input) => {
+    const error = await shell.openPath(input.path)
+    return { success: !error, error: error || undefined }
   })
 
   // --- SFTP Handlers ---

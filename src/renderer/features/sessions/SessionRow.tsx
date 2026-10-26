@@ -5,7 +5,8 @@ import type { SessionItem } from '@shared/types'
 interface SessionRowProps {
   session: SessionItem
   isSub?: boolean
-  onSelect?: (session: SessionItem) => void
+  isSelected?: boolean
+  onSelect?: (session: SessionItem, isCtrl: boolean, isShift: boolean) => void
   onOpen?: (session: SessionItem) => void
   onEdit?: (session: SessionItem) => void
   onDuplicate?: (session: SessionItem) => void
@@ -15,6 +16,7 @@ interface SessionRowProps {
 export function SessionRow({
   session,
   isSub = false,
+  isSelected = false,
   onSelect,
   onOpen,
   onEdit,
@@ -54,13 +56,15 @@ export function SessionRow({
       <div
         role="treeitem"
         tabIndex={0}
-        onClick={() => onSelect?.(session)}
+        onClick={(e) => onSelect?.(session, e.ctrlKey || e.metaKey, e.shiftKey)}
         onDoubleClick={() => onOpen?.(session)}
         onContextMenu={handleContextMenu}
         onKeyDown={handleKeyDown}
-        className={`group flex flex-col py-1.5 px-2 rounded-[6px] cursor-pointer text-tx hover:bg-panel2 focus-visible:outline-2 focus-visible:outline-acc focus-visible:outline-offset-1 select-none text-xs transition-colors mb-0.5 ${
-          isSub ? 'pl-[22px]' : ''
-        }`}
+        className={`group flex flex-col py-1.5 px-2 rounded-[6px] cursor-pointer select-none text-xs transition-colors mb-0.5 ${
+          isSelected
+            ? 'bg-acc/20 border border-acc/40 text-tx font-medium'
+            : 'text-tx hover:bg-panel2'
+        } ${isSub ? 'pl-[22px]' : ''}`}
       >
         {/* Line 1: Status dot + Session Name + Action buttons */}
         <div className="flex items-center justify-between gap-1 min-w-0 w-full">

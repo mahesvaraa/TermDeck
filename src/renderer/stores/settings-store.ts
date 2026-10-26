@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import type { ITheme } from '@xterm/xterm'
 
 export type ThemeMode = 'system' | 'dark' | 'light'
+export type SupportedLanguage = 'ru' | 'en'
 
 export interface TerminalSettings {
   colorScheme: string
@@ -36,8 +37,27 @@ export const DEFAULT_SHORTCUTS: Record<string, string> = {
   prevTab: 'Ctrl+Shift+Tab'
 }
 
+export interface SessionProfileDefaults {
+  port: number
+  username: string
+  auth: 'password' | 'key' | 'agent'
+  keyPath: string
+  keepaliveSec: number
+  forwardAgent: boolean
+}
+
+export const DEFAULT_SESSION_PROFILE: SessionProfileDefaults = {
+  port: 22,
+  username: '',
+  auth: 'key',
+  keyPath: '~/.ssh/id_ed25519',
+  keepaliveSec: 30,
+  forwardAgent: false
+}
+
 interface SettingsState {
   theme: ThemeMode
+  language: SupportedLanguage
   sidebarVisible: boolean
   sftpVisible: boolean
   sidebarWidth: number
@@ -47,8 +67,11 @@ interface SettingsState {
   sessionRestore: SessionRestoreSettings
   logging: TerminalLoggingSettings
   shortcuts: Record<string, string>
+  sessionProfile: SessionProfileDefaults
 
   setTheme: (theme: ThemeMode) => void
+  setLanguage: (lang: SupportedLanguage) => void
+  setSessionProfile: (profile: Partial<SessionProfileDefaults>) => void
   toggleSidebar: () => void
   setSidebarVisible: (visible: boolean) => void
   toggleSftp: () => void
@@ -80,6 +103,7 @@ export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
       theme: 'dark',
+      language: 'ru',
       sidebarVisible: true,
       sftpVisible: true,
       sidebarWidth: 230,
@@ -90,6 +114,15 @@ export const useSettingsStore = create<SettingsState>()(
         applyThemeToDocument(theme)
         set({ theme })
       },
+
+      setLanguage: (language) => set({ language }),
+
+      sessionProfile: DEFAULT_SESSION_PROFILE,
+
+      setSessionProfile: (patch) =>
+        set((state) => ({
+          sessionProfile: { ...state.sessionProfile, ...patch }
+        })),
 
       toggleSidebar: () => set((state) => ({ sidebarVisible: !state.sidebarVisible })),
       setSidebarVisible: (sidebarVisible) => set({ sidebarVisible }),

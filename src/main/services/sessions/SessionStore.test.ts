@@ -42,6 +42,7 @@ describe('SessionStore', () => {
 
   beforeEach(() => {
     sessionStore = new SessionStore({ name: 'test-sessions' })
+    sessionStore.clearAll()
   })
 
   it('initializes with empty sessions and folders by default', () => {
@@ -190,6 +191,74 @@ describe('SessionStore', () => {
       expect(sessionStore.getKnownHost('10.0.0.1', 22)).toBeDefined()
       sessionStore.removeKnownHost('10.0.0.1', 22)
       expect(sessionStore.getKnownHost('10.0.0.1', 22)).toBeUndefined()
+    })
+  })
+
+  describe('Export & Import', () => {
+    it('exports sessions and folders bundle', () => {
+      sessionStore.saveFolder({ id: 'f-1', name: 'Databases' })
+      sessionStore.saveSession({
+        id: 's-1',
+        name: 'Postgres Prod',
+        host: '10.0.0.5',
+        port: 22,
+        username: 'postgres',
+        auth: 'password',
+        folderId: 'f-1',
+        keepaliveSec: 30,
+        encoding: 'utf-8'
+      })
+
+      const bundle = sessionStore.exportData()
+      expect(bundle.version).toBe(1)
+      expect(bundle.exportedAt).toBeDefined()
+      expect(bundle.sessions).toHaveLength(1)
+      expect(bundle.folders).toHaveLength(1)
+      expect(bundle.sessions[0].name).toBe('Postgres Prod')
+    })
+
+    it('imports bundle in merge and replace modes', () => {
+      sessionStore.saveSession({
+        id: 's-orig',
+        name: 'Original Server',
+        host: '1.1.1.1',
+        port: 22,
+        username: 'root',
+        auth: 'password',
+        keepaliveSec: 30,
+        encoding: 'utf-8'
+      })
+
+      const bundleToImport = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        folders: [{ id: 'f-new', name: 'Cloud' }],
+        sessions: [
+          {
+            id: 's-cloud-1',
+            name: 'AWS Node',
+            host: '3.3.3.3',
+            port: 22,
+            username: 'ec2-user',
+            auth: 'key' as const,
+            folderId: 'f-new',
+            keepaliveSec: 30,
+            encoding: 'utf-8'
+          }
+        ]
+      }
+
+      // Merge mode
+      const resMerge = sessionStore.importData(bundleToImport, 'merge')
+      expect(resMerge.importedSessionsCount).toBe(1) // 1 session imported
+      expect(sessionStore.listSessions()).toHaveLength(2) // existing + imported
+      expect(sessionStore.listFolders()).toHaveLength(1)
+
+      // Replace mode
+      const resReplace = sessionStore.importData(bundleToImport, 'replace')
+      expect(resReplace.importedSessionsCount).toBe(1)
+      expect(sessionStore.listSessions()).toHaveLength(1)
+      expect(sessionStore.listSessions()[0].name).toBe('AWS Node')
     })
   })
 })

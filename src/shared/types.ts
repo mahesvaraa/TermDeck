@@ -5,6 +5,15 @@ export interface AppVersionInfo {
 
 export type SshAuthType = 'password' | 'key' | 'agent'
 
+export interface DetectedSshAgent {
+  id: string
+  name: string
+  type: 'openssh' | 'pageant' | '1password' | 'custom'
+  socketPath: string
+  isAvailable: boolean
+  description: string
+}
+
 export interface SessionItem {
   id: string
   name: string
@@ -19,6 +28,8 @@ export interface SessionItem {
   folderId?: string
   auth?: SshAuthType
   keyPath?: string
+  agentPath?: string
+  forwardAgent?: boolean
   jumpHostId?: string
   tags?: string[]
 }
@@ -34,6 +45,8 @@ export interface SessionConfig {
   username: string
   auth: SshAuthType
   keyPath?: string
+  agentPath?: string
+  forwardAgent?: boolean
   color?: string
   tags?: string[]
   startupCommand?: string
@@ -53,6 +66,13 @@ export interface SessionTreeFolder {
   id: string
   name: string
   items: SessionItem[]
+}
+
+export interface SessionExportBundle {
+  version: number
+  exportedAt: string
+  sessions: SessionConfig[]
+  folders: SessionFolder[]
 }
 
 export interface KnownHostRecord {

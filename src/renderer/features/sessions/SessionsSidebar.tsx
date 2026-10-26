@@ -1,10 +1,23 @@
 import { useState, type ChangeEvent } from 'react'
-import { Search, KeyRound, Plus, Sliders, FolderPlus, PanelLeftClose, Network } from 'lucide-react'
+import {
+  Search,
+  KeyRound,
+  Plus,
+  Sliders,
+  FolderPlus,
+  PanelLeftClose,
+  Network,
+  FolderSync,
+  Play,
+  Trash2,
+  X
+} from 'lucide-react'
 import { ru } from '../../i18n/ru'
 import { useSessions } from './useSessions'
 import { SessionTree } from './SessionTree'
 import { SessionModal } from './SessionModal'
 import { SessionFolderModal } from './SessionFolderModal'
+import { SessionImportExportModal } from './SessionImportExportModal'
 import { useTabsStore } from '../../stores/tabs-store'
 import { useSessionsStore } from '../../stores/sessions-store'
 import { useSettingsStore } from '../../stores/settings-store'
@@ -39,6 +52,47 @@ export function SessionsSidebar({
 
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false)
   const [editingFolder, setEditingFolder] = useState<SessionFolder | null>(null)
+  const [isImportExportOpen, setIsImportExportOpen] = useState(false)
+  const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([])
+
+  const handleSelectSession = (session: SessionItem, isCtrl: boolean, isShift: boolean): void => {
+    if (isCtrl) {
+      setSelectedSessionIds((prev) =>
+        prev.includes(session.id) ? prev.filter((id) => id !== session.id) : [...prev, session.id]
+      )
+    } else if (isShift && selectedSessionIds.length > 0) {
+      const allFlat = folders.flatMap((f) => f.items)
+      const lastIdx = allFlat.findIndex((s) => s.id === selectedSessionIds[selectedSessionIds.length - 1])
+      const currIdx = allFlat.findIndex((s) => s.id === session.id)
+      if (lastIdx !== -1 && currIdx !== -1) {
+        const [start, end] = [Math.min(lastIdx, currIdx), Math.max(lastIdx, currIdx)]
+        const rangeIds = allFlat.slice(start, end + 1).map((s) => s.id)
+        setSelectedSessionIds(Array.from(new Set([...selectedSessionIds, ...rangeIds])))
+        return
+      }
+      setSelectedSessionIds([session.id])
+    } else {
+      setSelectedSessionIds([session.id])
+    }
+  }
+
+  const handleBatchOpen = (): void => {
+    const allFlat = folders.flatMap((f) => f.items)
+    for (const id of selectedSessionIds) {
+      const item = allFlat.find((s) => s.id === id)
+      if (item) openTab(item)
+    }
+    setSelectedSessionIds([])
+  }
+
+  const handleBatchDelete = async (): Promise<void> => {
+    if (confirm(`Удалить выбранные ${selectedSessionIds.length} сессий?`)) {
+      for (const id of selectedSessionIds) {
+        await deleteSession(id)
+      }
+      setSelectedSessionIds([])
+    }
+  }
 
   const handleOpenSession = (session: SessionItem): void => {
     openTab(session)
@@ -133,6 +187,14 @@ export function SessionsSidebar({
           <div className="flex items-center gap-1">
             <button
               type="button"
+              onClick={() => setIsImportExportOpen(true)}
+              title="Импорт ~/.ssh/config и резервное копирование"
+              className="p-1 rounded text-mut hover:text-tx hover:bg-panel2 focus-visible:outline-2 focus-visible:outline-acc transition-colors"
+            >
+              <FolderSync className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 setEditingFolder(null)
                 setIsFolderModalOpen(true)
@@ -167,6 +229,8 @@ export function SessionsSidebar({
 
         <SessionTree
           folders={folders}
+          selectedSessionIds={selectedSessionIds}
+          onSelectSession={handleSelectSession}
           onOpenSession={handleOpenSession}
           onEditSession={handleEditSession}
           onDuplicateSession={handleDuplicateSession}
@@ -175,6 +239,42 @@ export function SessionsSidebar({
           onEditFolder={handleEditFolder}
           onDeleteFolder={handleDeleteFolder}
         />
+
+        {/* Batch Action Bar */}
+        {selectedSessionIds.length > 1 && (
+          <div className="mx-2 mb-2 p-2 rounded-md bg-acc/15 border border-acc/40 flex items-center justify-between text-xs animate-in slide-in-from-bottom-2 duration-150">
+            <span className="font-semibold text-tx text-[11px]">
+              Выбрано: {selectedSessionIds.length}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleBatchOpen}
+                title="Запустить все выбранные сессии"
+                className="py-0.5 px-2 rounded bg-acc text-bg font-medium hover:bg-acc/90 flex items-center gap-1 text-[11px] transition-colors"
+              >
+                <Play className="w-2.5 h-2.5 fill-current" />
+                <span>Запуск</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleBatchDelete}
+                title="Удалить выбранные сессии"
+                className="p-1 rounded bg-err/20 text-err hover:bg-err/30 transition-colors"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedSessionIds([])}
+                title="Снять выбор"
+                className="p-1 rounded text-mut hover:text-tx transition-colors"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center gap-1.5 p-2 border-t border-line">
           <button
@@ -263,6 +363,13 @@ export function SessionsSidebar({
             setIsFolderModalOpen(false)
             setEditingFolder(null)
           }}
+        />
+      )}
+
+      {isImportExportOpen && (
+        <SessionImportExportModal
+          isOpen={isImportExportOpen}
+          onClose={() => setIsImportExportOpen(false)}
         />
       )}
     </>

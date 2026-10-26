@@ -24,6 +24,15 @@ export interface ElectronApi {
   deleteSession: (id: string) => Promise<void>
   saveFolder: (input: IpcInput<'folder:save'>) => Promise<IpcOutput<'folder:save'>>
   deleteFolder: (id: string) => Promise<void>
+  exportSessions: () => Promise<IpcOutput<'session:export'>>
+  importSessions: (input: IpcInput<'session:import'>) => Promise<IpcOutput<'session:import'>>
+  detectSshConfig: (
+    input?: IpcInput<'session:detectSshConfig'>
+  ) => Promise<IpcOutput<'session:detectSshConfig'>>
+  importSshConfig: (
+    input?: IpcInput<'session:importSshConfig'>
+  ) => Promise<IpcOutput<'session:importSshConfig'>>
+  detectSshAgents: () => Promise<IpcOutput<'ssh:detectAgents'>>
 
   // SSH
   connectSsh: (input: IpcInput<'ssh:connect'>) => Promise<IpcOutput<'ssh:connect'>>
@@ -37,6 +46,16 @@ export interface ElectronApi {
   onSshHostKeyPrompt: (
     listener: (payload: IpcEventPayload<'ssh:hostKeyPrompt'>) => void
   ) => () => void
+
+  // Local File System (Dual-Pane Explorer)
+  localFsList: (
+    input?: IpcInput<'localFs:list'>
+  ) => Promise<{ path: string; items: SftpItem[] }>
+  localFsHomeDir: () => Promise<{ path: string }>
+  localFsDrives: () => Promise<{ drives: string[] }>
+  localFsOpenPath: (
+    input: IpcInput<'localFs:openPath'>
+  ) => Promise<IpcOutput<'localFs:openPath'>>
 
   // SFTP Operations
   sftpList: (input: IpcInput<'sftp:list'>) => Promise<{ path: string; items: SftpItem[] }>
@@ -170,6 +189,21 @@ const api: ElectronApi = {
   deleteFolder: (id: string): Promise<void> => {
     return ipcRenderer.invoke('folder:delete', { id })
   },
+  exportSessions: (): Promise<IpcOutput<'session:export'>> => {
+    return ipcRenderer.invoke('session:export')
+  },
+  importSessions: (input): Promise<IpcOutput<'session:import'>> => {
+    return ipcRenderer.invoke('session:import', input)
+  },
+  detectSshConfig: (input): Promise<IpcOutput<'session:detectSshConfig'>> => {
+    return ipcRenderer.invoke('session:detectSshConfig', input)
+  },
+  importSshConfig: (input): Promise<IpcOutput<'session:importSshConfig'>> => {
+    return ipcRenderer.invoke('session:importSshConfig', input)
+  },
+  detectSshAgents: (): Promise<IpcOutput<'ssh:detectAgents'>> => {
+    return ipcRenderer.invoke('ssh:detectAgents')
+  },
 
   // SSH
   connectSsh: (input): Promise<IpcOutput<'ssh:connect'>> => {
@@ -227,6 +261,20 @@ const api: ElectronApi = {
     return () => {
       ipcRenderer.removeListener('ssh:hostKeyPrompt', handler)
     }
+  },
+
+  // Local File System (Dual-Pane Explorer)
+  localFsList: (input): Promise<{ path: string; items: SftpItem[] }> => {
+    return ipcRenderer.invoke('localFs:list', input)
+  },
+  localFsHomeDir: (): Promise<{ path: string }> => {
+    return ipcRenderer.invoke('localFs:homeDir')
+  },
+  localFsDrives: (): Promise<{ drives: string[] }> => {
+    return ipcRenderer.invoke('localFs:drives')
+  },
+  localFsOpenPath: (input): Promise<IpcOutput<'localFs:openPath'>> => {
+    return ipcRenderer.invoke('localFs:openPath', input)
   },
 
   // SFTP Operations

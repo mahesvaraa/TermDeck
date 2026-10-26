@@ -11,6 +11,7 @@ import { TerminalSearchBar } from './TerminalSearchBar'
 import { useSettingsStore } from '../../stores/settings-store'
 import { useTabsStore } from '../../stores/tabs-store'
 import { useSftpStore } from '../../stores/sftp-store'
+import { useCommandHistoryStore } from '../../stores/history-store'
 import { parseOsc7Uri } from '../../utils/osc7'
 import { getAllLeaves } from '../../utils/split-tree'
 import type { TabData } from '../../stores/tabs-store'
@@ -151,8 +152,24 @@ export function TerminalView({
     fitAddonRef.current = fitAddon
     searchAddonRef.current = searchAddon
 
+    let commandBuffer = ''
+
     // Send input from xterm to pty or ssh (supports multi-exec across splits)
     const dataDisposable = term.onData((data) => {
+      // Buffer command text and log on Enter
+      if (data === '\r' || data.includes('\r')) {
+        if (commandBuffer.trim().length > 1) {
+          useCommandHistoryStore
+            .getState()
+            .addCommand(commandBuffer, tabRef.current?.host, tabRef.current?.sessionId)
+        }
+        commandBuffer = ''
+      } else if (data === '\x7f' || data === '\b') {
+        commandBuffer = commandBuffer.slice(0, -1)
+      } else if (data.length === 1 && data >= ' ') {
+        commandBuffer += data
+      }
+
       const activeTab = tabRef.current
       const currentTab = activeTab
         ? useTabsStore.getState().tabs.find((t) => t.id === activeTab.id)
@@ -175,8 +192,13 @@ export function TerminalView({
       }
     })
 
-    // Custom key event handler for Ctrl+Shift+C / Ctrl+Shift+V / Ctrl+Shift+F
+    // Custom key event handler for Ctrl+Shift+C / Ctrl+Shift+V / Ctrl+Shift+F / Ctrl+R
     term.attachCustomKeyEventHandler((event: KeyboardEvent) => {
+      if (event.ctrlKey && !event.shiftKey && event.code === 'KeyR') {
+        event.preventDefault()
+        window.dispatchEvent(new CustomEvent('termdeck:open-history'))
+        return false
+      }
       if (event.ctrlKey && event.shiftKey && event.code === 'KeyF') {
         event.preventDefault()
         setIsSearchOpen((prev) => !prev)

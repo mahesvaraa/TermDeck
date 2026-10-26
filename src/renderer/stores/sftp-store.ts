@@ -1,5 +1,12 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { SftpFileItem, SftpColumnSettings, SftpPanelPosition } from '@shared/types'
+
+export interface SftpBookmark {
+  id: string
+  name: string
+  path: string
+}
 
 export function formatFileSize(bytes: number): string {
   if (!bytes || bytes === 0) return '0 B'
@@ -33,11 +40,14 @@ interface SftpStoreState {
   columnSettings: SftpColumnSettings
   sortField: SftpSortField
   sortOrder: SftpSortOrder
+  bookmarks: SftpBookmark[]
 
-  // Settings actions
+  // Settings & Bookmarks actions
   setPanelPosition: (pos: SftpPanelPosition) => void
   toggleColumn: (column: keyof SftpColumnSettings) => void
   setSorting: (field: SftpSortField) => void
+  addBookmark: (name: string, path: string) => void
+  removeBookmark: (id: string) => void
 
   // Per-tab actions
   getTabState: (tabId: string) => TabSftpState
@@ -58,6 +68,14 @@ const defaultColumnSettings: SftpColumnSettings = {
   showPermissions: false
 }
 
+const defaultBookmarks: SftpBookmark[] = [
+  { id: 'bm-root', name: 'Root (/)', path: '/' },
+  { id: 'bm-home', name: 'Home (/home)', path: '/home' },
+  { id: 'bm-etc', name: 'Config (/etc)', path: '/etc' },
+  { id: 'bm-var-log', name: 'Logs (/var/log)', path: '/var/log' },
+  { id: 'bm-www', name: 'Web (/var/www)', path: '/var/www' }
+]
+
 export const defaultTabSftpState: TabSftpState = {
   currentPath: '/var/www',
   items: [],
@@ -66,16 +84,32 @@ export const defaultTabSftpState: TabSftpState = {
   error: null
 }
 
-export const useSftpStore = create<SftpStoreState>((set, get) => ({
-  tabStates: {},
-  panelPosition: 'left',
-  columnSettings: defaultColumnSettings,
-  sortField: 'name',
-  sortOrder: 'asc',
+export const useSftpStore = create<SftpStoreState>()(
+  persist(
+    (set, get) => ({
+      tabStates: {},
+      panelPosition: 'left',
+      columnSettings: defaultColumnSettings,
+      sortField: 'name',
+      sortOrder: 'asc',
+      bookmarks: defaultBookmarks,
 
-  setPanelPosition: (panelPosition) => set({ panelPosition }),
+      setPanelPosition: (panelPosition) => set({ panelPosition }),
 
-  toggleColumn: (column) =>
+      addBookmark: (name, path) =>
+        set((state) => ({
+          bookmarks: [
+            ...state.bookmarks.filter((b) => b.path !== path),
+            { id: `bm-${Date.now()}`, name: name.trim() || path, path }
+          ]
+        })),
+
+      removeBookmark: (id) =>
+        set((state) => ({
+          bookmarks: state.bookmarks.filter((b) => b.id !== id)
+        })),
+
+      toggleColumn: (column) =>
     set((state) => ({
       columnSettings: {
         ...state.columnSettings,
@@ -286,4 +320,15 @@ export const useSftpStore = create<SftpStoreState>((set, get) => ({
       await get().loadDirectory(tabId, sessionId, currentState.currentPath)
     }
   }
-}))
+}),
+{
+  name: 'termdeck-sftp-storage-v1',
+  partialize: (state) => ({
+    bookmarks: state.bookmarks,
+    panelPosition: state.panelPosition,
+    columnSettings: state.columnSettings,
+    sortField: state.sortField,
+    sortOrder: state.sortOrder
+  })
+}
+))

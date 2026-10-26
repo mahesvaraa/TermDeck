@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import Editor, { loader, type OnMount } from '@monaco-editor/react'
+import Editor, { DiffEditor, loader, type OnMount } from '@monaco-editor/react'
 import { monaco } from './monaco-custom'
-import { Save, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Save, AlertCircle, CheckCircle2, GitCompare } from 'lucide-react'
 import type { TabData } from '../../stores/tabs-store'
 import { useTabsStore } from '../../stores/tabs-store'
 import { useSettingsStore } from '../../stores/settings-store'
@@ -57,6 +57,8 @@ export function RemoteEditor({ tab, isActive }: RemoteEditorProps): JSX.Element 
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 })
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [showDiff, setShowDiff] = useState(false)
+  const [sideBySide, setSideBySide] = useState(true)
 
   // Rebuild Monaco theme whenever the application theme changes
   useEffect(() => {
@@ -155,25 +157,45 @@ export function RemoteEditor({ tab, isActive }: RemoteEditorProps): JSX.Element 
     <div className="relative w-full h-full flex flex-col min-w-0 min-h-0 bg-term overflow-hidden font-sans">
       {/* Editor Body */}
       <div className="flex-1 min-h-0 min-w-0 relative">
-        <Editor
-          height="100%"
-          language={language}
-          value={editorState.content}
-          theme="termdeck-dark"
-          onChange={(val) => updateEditorContent(tab.id, val || '')}
-          onMount={handleEditorMount}
-          options={{
-            fontSize: 13,
-            fontFamily: "'JetBrains Mono', monospace",
-            lineHeight: 20,
-            minimap: { enabled: true },
-            scrollBeyondLastLine: false,
-            wordWrap: 'on',
-            automaticLayout: true,
-            tabSize: 2,
-            renderWhitespace: 'selection'
-          }}
-        />
+        {showDiff ? (
+          <DiffEditor
+            height="100%"
+            language={language}
+            original={editorState.originalContent ?? ''}
+            modified={editorState.content}
+            theme="termdeck-theme"
+            options={{
+              renderSideBySide: sideBySide,
+              readOnly: false,
+              fontSize: 13,
+              fontFamily: "'JetBrains Mono', monospace",
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              wordWrap: 'on',
+              automaticLayout: true
+            }}
+          />
+        ) : (
+          <Editor
+            height="100%"
+            language={language}
+            value={editorState.content}
+            theme="termdeck-theme"
+            onChange={(val) => updateEditorContent(tab.id, val || '')}
+            onMount={handleEditorMount}
+            options={{
+              fontSize: 13,
+              fontFamily: "'JetBrains Mono', monospace",
+              lineHeight: 20,
+              minimap: { enabled: true },
+              scrollBeyondLastLine: false,
+              wordWrap: 'on',
+              automaticLayout: true,
+              tabSize: 2,
+              renderWhitespace: 'selection'
+            }}
+          />
+        )}
       </div>
 
       {/* Editor Status Bar */}
@@ -193,6 +215,40 @@ export function RemoteEditor({ tab, isActive }: RemoteEditorProps): JSX.Element 
               <CheckCircle2 className="w-3 h-3 text-ok" />
               Сохранено
             </span>
+          )}
+
+          {/* Diff Mode Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setShowDiff(!showDiff)}
+            title={
+              showDiff
+                ? 'Вернуться в обычный режим редактора'
+                : 'Показать построчные изменения по сравнению с версией на сервере'
+            }
+            className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-sans transition-colors ${
+              showDiff
+                ? 'bg-acc/25 text-acc font-medium'
+                : 'hover:text-tx hover:bg-panel2'
+            }`}
+          >
+            <GitCompare className="w-3.5 h-3.5" />
+            <span>{showDiff ? 'Редактор' : 'Diff'}</span>
+          </button>
+
+          {showDiff && (
+            <button
+              type="button"
+              onClick={() => setSideBySide(!sideBySide)}
+              title={
+                sideBySide
+                  ? 'Переключить на построчное отображение изменений'
+                  : 'Переключить на отображение бок о бок'
+              }
+              className="hover:text-tx text-[10px] px-1 py-0.5 rounded bg-panel2 border border-line"
+            >
+              {sideBySide ? 'Бок о бок' : 'В строках'}
+            </button>
           )}
 
           {saveError && (

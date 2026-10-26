@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto'
 import {
   createReadStream,
   createWriteStream,
-  promises as fsPromises,
   existsSync,
   statSync,
   mkdirSync
@@ -16,6 +15,11 @@ import type {
   TransferConflictPrompt
 } from '@shared/types'
 import { sftpService } from './SftpService'
+import {
+  formatTransferSpeed,
+  formatTransferEta,
+  scanLocalDirectory
+} from './transfer-utils'
 
 export interface TransferQueueCallbacks {
   onProgress: (event: TransferProgressEvent) => void
@@ -430,9 +434,9 @@ export class TransferQueue {
           const elapsed = (now - lastEmit) / 1000
           if (elapsed >= 0.1) {
             const speedBytes = bytesSinceLast / elapsed
-            item.speed = this.formatSpeed(speedBytes)
+            item.speed = formatTransferSpeed(speedBytes)
             const remainingBytes = Math.max(0, item.totalBytes - item.transferredBytes)
-            item.eta = speedBytes > 0 ? this.formatEta(remainingBytes / speedBytes) : '—'
+            item.eta = speedBytes > 0 ? formatTransferEta(remainingBytes / speedBytes) : '—'
             item.progress =
               item.totalBytes > 0
                 ? Math.min(100, Math.round((item.transferredBytes / item.totalBytes) * 100))
@@ -515,9 +519,9 @@ export class TransferQueue {
           const elapsed = (now - lastEmit) / 1000
           if (elapsed >= 0.1) {
             const speedBytes = bytesSinceLast / elapsed
-            item.speed = this.formatSpeed(speedBytes)
+            item.speed = formatTransferSpeed(speedBytes)
             const remainingBytes = Math.max(0, item.totalBytes - item.transferredBytes)
-            item.eta = speedBytes > 0 ? this.formatEta(remainingBytes / speedBytes) : '—'
+            item.eta = speedBytes > 0 ? formatTransferEta(remainingBytes / speedBytes) : '—'
             item.progress =
               item.totalBytes > 0
                 ? Math.min(100, Math.round((item.transferredBytes / item.totalBytes) * 100))
@@ -559,30 +563,17 @@ export class TransferQueue {
       // Directory may already exist
     }
 
-    const filesToUpload: { local: string; remote: string; size: number }[] = []
-
-    const scanLocal = async (currentLocal: string, currentRemote: string): Promise<void> => {
-      const entries = await fsPromises.readdir(currentLocal, { withFileTypes: true })
-      for (const entry of entries) {
-        const nextLocal = join(currentLocal, entry.name)
-        const nextRemote = `${currentRemote.replace(/\/+$/, '')}/${entry.name}`
-
-        if (entry.isDirectory()) {
-          try {
-            await sftpService.mkdir(item.sessionId, nextRemote)
-          } catch {
-            // Ignored
-          }
-          await scanLocal(nextLocal, nextRemote)
-        } else if (entry.isFile()) {
-          const stat = statSync(nextLocal)
-          filesToUpload.push({ local: nextLocal, remote: nextRemote, size: stat.size })
-          item.totalBytes += stat.size
-        }
+    const filesToUpload = await scanLocalDirectory(
+      srcLocalDir,
+      destRemoteDir,
+      async (remoteDir) => {
+        await sftpService.mkdir(item.sessionId, remoteDir)
       }
-    }
+    )
 
-    await scanLocal(srcLocalDir, destRemoteDir)
+    for (const f of filesToUpload) {
+      item.totalBytes += f.size
+    }
     this.emitProgress(item)
 
     for (const f of filesToUpload) {
@@ -627,24 +618,6 @@ export class TransferQueue {
       if (item.status === 'cancelled' || item.status === 'paused') break
       await this.downloadSingleFile(item, f.remote, f.local, f.size)
     }
-  }
-
-  private formatSpeed(bytesPerSec: number): string {
-    if (bytesPerSec >= 1024 * 1024) {
-      return `${(bytesPerSec / 1024 / 1024).toFixed(1)} MB/s`
-    }
-    if (bytesPerSec >= 1024) {
-      return `${(bytesPerSec / 1024).toFixed(1)} KB/s`
-    }
-    return `${Math.round(bytesPerSec)} B/s`
-  }
-
-  private formatEta(seconds: number): string {
-    const s = Math.round(seconds)
-    if (s < 60) return `${s}с`
-    const m = Math.floor(s / 60)
-    const remS = s % 60
-    return `${m}м ${remS}с`
   }
 }
 
